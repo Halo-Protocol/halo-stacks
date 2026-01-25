@@ -1,0 +1,50 @@
+[project]
+name = "halo-protocol"
+description = "Decentralized lending circles with on-chain credit scoring on Stacks"
+authors = ["XXIX Labs"]
+telemetry = false
+cache_dir = "./.cache"
+
+[contracts.halo-sip010-trait]
+path = "contracts/halo-sip010-trait.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-identity]
+path = "contracts/halo-identity.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-mock-token]
+path = "contracts/halo-mock-token.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-mock-sbtc]
+path = "contracts/halo-mock-sbtc.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-credit]
+path = "contracts/halo-credit.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-vault]
+path = "contracts/halo-vault.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-sbtc-staking]
+path = "contracts/halo-sbtc-staking.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[contracts.halo-circle]
+path = "contracts/halo-circle.clar"
+clarity_version = 3
+epoch = "3.0"
+
+[repl.analysis]
+passes = ["check_checker"]
+check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
