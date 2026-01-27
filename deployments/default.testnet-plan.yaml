@@ -1,0 +1,67 @@
+---
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: halo-identity
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 43410
+            path: contracts/halo-identity.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-credit
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 155120
+            path: contracts/halo-credit.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-sip010-trait
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 7870
+            path: contracts/halo-sip010-trait.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-vault
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 212750
+            path: contracts/halo-vault.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-circle
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 282390
+            path: contracts/halo-circle.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-mock-sbtc
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 23290
+            path: contracts/halo-mock-sbtc.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-mock-token
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 22770
+            path: contracts/halo-mock-token.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-sbtc-staking
+            expected-sender: ST3Z4DG7WT691EBYNTFXG0HT5XRFYNHD9VJ5TB4W4
+            cost: 136300
+            path: contracts/halo-sbtc-staking.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.0"
