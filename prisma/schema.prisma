@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  socialProvider String   @map("social_provider")
+  socialId      String   @map("social_id")
+  uniqueId      String   @unique @map("unique_id")
+  walletAddress String?  @unique @map("wallet_address")
+  bindingTxId   String?  @map("binding_tx_id")
+  status        String   @default("pending_wallet")
+  createdAt     DateTime @default(now()) @map("created_at")
+  walletBoundAt DateTime? @map("wallet_bound_at")
+
+  circles         CircleMember[]
+  createdCircles  Circle[]       @relation("creator")
+  contributions   Contribution[]
+  creditScore     CreditScore?
+  faucetRequests  FaucetRequest[]
+
+  @@unique([socialProvider, socialId])
+  @@map("users")
+}
+
+model Circle {
+  id                 String    @id @default(uuid())
+  onChainId          Int?      @unique @map("on_chain_id")
+  creatorId          String    @map("creator_id")
+  name               String
+  contributionAmount BigInt    @map("contribution_amount")
+  totalMembers       Int       @map("total_members")
+  roundDuration      Int       @map("round_duration")
+  gracePeriod        Int       @map("grace_period")
+  tokenType          Int       @default(0) @map("token_type")
+  tokenContract      String?   @map("token_contract")
+  inviteCode         String    @unique @map("invite_code")
+  status             String    @default("pending_creation")
+  creationTxId       String?   @map("creation_tx_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  startedAt          DateTime? @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+  onChainRound       Int?      @map("on_chain_round")
+  onChainStatus      Int?      @map("on_chain_status")
+  lastSyncedAt       DateTime? @map("last_synced_at")
+
+  creator       User           @relation("creator", fields: [creatorId], references: [id])
+  members       CircleMember[]
+  contributions Contribution[]
+  payouts       Payout[]
+
+  @@index([creatorId])
+  @@map("circles")
+}
+
+model CircleMember {
+  id             String    @id @default(uuid())
+  circleId       String    @map("circle_id")
+  userId         String    @map("user_id")
+  payoutPosition Int?      @map("payout_position")
+  status         String    @default("pending_join")
+  joinTxId       String?   @map("join_tx_id")
+  joinedAt       DateTime? @map("joined_at")
+
+  circle Circle @relation(fields: [circleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId])
+  @@index([circleId])
+  @@index([userId])
+  @@map("circle_members")
+}
+
+model Contribution {
+  id            String   @id @default(uuid())
+  circleId      String   @map("circle_id")
+  userId        String   @map("user_id")
+  round         Int
+  amount        BigInt
+  onTime        Boolean  @map("on_time")
+  txId          String   @map("tx_id")
+  contributedAt DateTime @default(now()) @map("contributed_at")
+
+  circle Circle @relation(fields: [circleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId, round])
+  @@index([circleId])
+  @@index([userId])
+  @@map("contributions")
+}
+
+model Payout {
+  id          String   @id @default(uuid())
+  circleId    String   @map("circle_id")
+  recipientId String   @map("recipient_id")
+  round       Int
+  amount      BigInt
+  txId        String   @map("tx_id")
+  paidAt      DateTime @default(now()) @map("paid_at")
+
+  circle Circle @relation(fields: [circleId], references: [id])
+
+  @@unique([circleId, round])
+  @@map("payouts")
+}
+
+model CreditScore {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  uniqueId         String   @unique @map("unique_id")
+  score            Int      @default(300)
+  totalPayments    Int      @default(0) @map("total_payments")
+  onTimePayments   Int      @default(0) @map("on_time_payments")
+  latePayments     Int      @default(0) @map("late_payments")
+  circlesCompleted Int      @default(0) @map("circles_completed")
+  circlesDefaulted Int      @default(0) @map("circles_defaulted")
+  totalVolume      BigInt   @default(0) @map("total_volume")
+  lastSyncedBlock  Int?     @map("last_synced_block")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("credit_scores")
+}
+
+model FaucetRequest {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  walletAddress String   @map("wallet_address")
+  hUsdTxId      String?  @map("husd_tx_id")
+  sbtcTxId      String?  @map("sbtc_tx_id")
+  hUsdAmount    BigInt   @map("husd_amount")
+  sbtcAmount    BigInt   @map("sbtc_amount")
+  status        String   @default("pending")
+  requestedAt   DateTime @default(now()) @map("requested_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([walletAddress])
+  @@index([userId])
+  @@map("faucet_requests")
+}
