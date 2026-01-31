@@ -1,0 +1,210 @@
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { bufferCV } from "@stacks/transactions";
+import { useWallet } from "../../components/providers/wallet-provider";
+import { useContractCall } from "../../hooks/use-contract-call";
+import { useTxStatus } from "../../hooks/use-tx-status";
+import { fetchApi } from "../../hooks/use-api";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Badge } from "../../components/ui/badge";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Shield, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+
+export default function BindWalletPage() {
+  const { data: session, status: sessionStatus, update } = useSession();
+  const { connected, address } = useWallet();
+  const { loading: txLoading, txId, error: txError, call } = useContractCall();
+  const txStatus = useTxStatus(txId);
+  const router = useRouter();
+
+  const [confirmed, setConfirmed] = useState(false);
+  const [initiating, setInitiating] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      router.push("/signin");
+    }
+  }, [sessionStatus, router]);
+
+  useEffect(() => {
+    if (!connected) {
+      router.push("/connect-wallet");
+    }
+  }, [connected, router]);
+
+  // When TX is confirmed on-chain, notify backend
+  useEffect(() => {
+    if (txStatus === "success" && txId && address && !confirming) {
+      setConfirming(true);
+      fetchApi("/api/identity/confirm-binding", {
+        method: "POST",
+        body: JSON.stringify({ txId, walletAddress: address }),
+      })
+        .then(() => {
+          toast.success("Wallet bound successfully!");
+          update(); // Refresh session
+          router.push("/dashboard");
+        })
+        .catch((err) => {
+          toast.error(`Confirmation failed: ${err.message}`);
+          setConfirming(false);
+        });
+    }
+  }, [txStatus, txId, address, confirming, update, router]);
+
+  const handleBind = async () => {
+    if (!address || !session?.user?.uniqueId) return;
+
+    setInitiating(true);
+    try {
+      // Step 1: Tell backend we're initiating binding
+      await fetchApi("/api/identity/bind-wallet", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: address }),
+      });
+
+      // Step 2: Call on-chain bind-wallet
+      const uniqueId = session.user.uniqueId;
+      const hexBytes = uniqueId.startsWith("0x")
+        ? uniqueId.slice(2)
+        : uniqueId;
+
+      await call({
+        contractName: "halo-identity",
+        functionName: "bind-wallet",
+        functionArgs: [bufferCV(Buffer.from(hexBytes, "hex"))],
+        onFinish: () => {
+          toast.info("Transaction submitted! Waiting for confirmation...");
+        },
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to initiate binding",
+      );
+    } finally {
+      setInitiating(false);
+    }
+  };
+
+  if (sessionStatus === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-8 space-y-4">
+            <Skeleton className="h-8 w-3/4 mx-auto" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <Shield className="h-10 w-10 mx-auto mb-2 text-primary" />
+          <CardTitle className="text-2xl">Bind Your Wallet</CardTitle>
+          <CardDescription>
+            Permanently link your wallet to your Halo identity
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Wallet address */}
+          <div className="flex items-center justify-between p-3 rounded-lg border">
+            <span className="text-sm text-muted-foreground">Wallet</span>
+            <Badge variant="outline" className="font-mono text-xs">
+              {address?.slice(0, 8)}...{address?.slice(-4)}
+            </Badge>
+          </div>
+
+          {/* Warning */}
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              This binding is <strong>permanent</strong> and cannot be undone.
+              Your wallet address will be permanently linked to your Halo
+              identity.
+            </AlertDescription>
+          </Alert>
+
+          {/* Confirmation checkbox */}
+          <div className="flex items-start gap-3 p-3 rounded-lg border">
+            <Checkbox
+              id="confirm"
+              checked={confirmed}
+              onCheckedChange={(v) => setConfirmed(v === true)}
+              disabled={!!txId}
+            />
+            <label htmlFor="confirm" className="text-sm cursor-pointer">
+              I understand this binding is permanent and I want to proceed
+            </label>
+          </div>
+
+          {/* TX Status */}
+          {txId && (
+            <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50">
+              {txStatus === "pending" && (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm">
+                    Transaction pending... (~10-15 minutes)
+                  </span>
+                </>
+              )}
+              {txStatus === "success" && (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm">Transaction confirmed!</span>
+                </>
+              )}
+              {txStatus === "failed" && (
+                <>
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <span className="text-sm">Transaction failed</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {txError && (
+            <p className="text-sm text-destructive text-center">{txError}</p>
+          )}
+
+          {/* Bind button */}
+          {!txId && (
+            <Button
+              className="w-full h-12"
+              onClick={handleBind}
+              disabled={!confirmed || initiating || txLoading}
+            >
+              {initiating || txLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Bind Wallet"
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
