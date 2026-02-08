@@ -64,17 +64,35 @@ export default function ConnectWalletPage() {
         <CardContent className="space-y-4">
           {!connected ? (
             <>
-              {!walletInstalled && (
-                <Alert className="bg-yellow-500/10 border-yellow-500/20">
-                  <AlertTriangle className="h-4 w-4 text-yellow-400" />
-                  <AlertDescription className="text-sm text-yellow-200">
-                    No Stacks wallet detected. Install one of the following:
-                  </AlertDescription>
-                </Alert>
-              )}
+              <Button
+                className="w-full h-12"
+                onClick={connect}
+                disabled={connecting}
+              >
+                {connecting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-5 w-5 mr-2" />
+                    Connect Leather / Xverse
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-center text-neutral-500">
+                A popup will appear to approve the connection
+              </p>
 
-              {!walletInstalled ? (
-                <div className="space-y-3">
+              {!walletInstalled && (
+                <div className="space-y-3 pt-2">
+                  <Alert className="bg-yellow-500/10 border-yellow-500/20">
+                    <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                    <AlertDescription className="text-sm text-yellow-200">
+                      No wallet extension detected. You may need to install one:
+                    </AlertDescription>
+                  </Alert>
                   <a
                     href="https://leather.io/install-extension"
                     target="_blank"
@@ -107,33 +125,7 @@ export default function ConnectWalletPage() {
                     </div>
                     <ExternalLink className="h-4 w-4 text-neutral-400" />
                   </a>
-                  <p className="text-xs text-center text-neutral-500">
-                    Install a wallet extension, then refresh this page
-                  </p>
                 </div>
-              ) : (
-                <>
-                  <Button
-                    className="w-full h-12"
-                    onClick={connect}
-                    disabled={connecting}
-                  >
-                    {connecting ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Wallet className="h-5 w-5 mr-2" />
-                        Connect Leather / Xverse
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-center text-neutral-500">
-                    A popup will appear to approve the connection
-                  </p>
-                </>
               )}
             </>
           ) : (

@@ -59,10 +59,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     setConnecting(true);
     try {
-      showConnect({
+      await showConnect({
         appDetails: {
           name: "Halo Protocol",
           icon:
