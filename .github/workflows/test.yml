@@ -35,7 +35,7 @@ jobs:
         run: clarinet check
 
       - name: Run contract tests
-        run: npm test
+        run: npx vitest run --config vitest.config.ts
 
   backend:
     name: Backend API Tests
@@ -76,6 +76,15 @@ jobs:
   build:
     name: Production Build
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://localhost:5432/test"
+      NEXTAUTH_SECRET: "ci-test-secret"
+      NEXTAUTH_URL: "http://localhost:3000"
+      HALO_ID_SALT: "ci-test-salt"
+      DEPLOYER_ADDRESS: "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM"
+      NEXT_PUBLIC_STACKS_NETWORK: "testnet"
+      NEXT_PUBLIC_DEPLOYER_ADDRESS: "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM"
+      NEXT_PUBLIC_STACKS_API_URL: "https://api.testnet.hiro.so"
     steps:
       - uses: actions/checkout@v4
 

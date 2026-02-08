@@ -14,8 +14,9 @@ let validated = false;
 
 export function validateEnv(): void {
   if (validated) return;
-  // Skip during Next.js build phase
+  // Skip during Next.js build phase and test runs
   if (process.env.NEXT_PHASE === "phase-production-build") return;
+  if (process.env.VITEST || process.env.NODE_ENV === "test") return;
   validated = true;
 
   const missing: string[] = [];
