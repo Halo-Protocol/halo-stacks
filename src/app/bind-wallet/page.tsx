@@ -33,7 +33,9 @@ export default function BindWalletPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [initiating, setInitiating] = useState(false);
   const [confirmFailed, setConfirmFailed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const confirmingRef = useRef(false);
+  const checkedRef = useRef(false);
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -46,6 +48,33 @@ export default function BindWalletPage() {
       router.push("/connect-wallet");
     }
   }, [connected, router]);
+
+  // On mount: check if wallet is already bound on-chain (recovery from previous attempt)
+  useEffect(() => {
+    if (!connected || !address || checkedRef.current) {
+      setChecking(false);
+      return;
+    }
+    checkedRef.current = true;
+
+    fetchApi<{ status: string }>("/api/identity/check-binding", {
+      method: "POST",
+      body: JSON.stringify({ walletAddress: address }),
+    })
+      .then((data) => {
+        if (data.status === "recovered" || data.status === "already_active") {
+          toast.success("Wallet already bound! Redirecting...");
+          update();
+          router.push("/dashboard");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        // Check failed — show the form anyway
+        setChecking(false);
+      });
+  }, [connected, address, update, router]);
 
   // When TX is confirmed on-chain, notify backend (once)
   useEffect(() => {
@@ -73,6 +102,22 @@ export default function BindWalletPage() {
 
     setInitiating(true);
     try {
+      // Pre-check: see if wallet is already bound on-chain (from a previous attempt)
+      try {
+        const checkResult = await fetchApi<{ status: string }>("/api/identity/check-binding", {
+          method: "POST",
+          body: JSON.stringify({ walletAddress: address }),
+        });
+        if (checkResult.status === "recovered" || checkResult.status === "already_active") {
+          toast.success("Wallet was already bound! Redirecting...");
+          update();
+          router.push("/dashboard");
+          return;
+        }
+      } catch {
+        // Pre-check failed or returned error — proceed with binding
+      }
+
       // Step 1: Tell backend we're initiating binding
       await fetchApi("/api/identity/bind-wallet", {
         method: "POST",
@@ -121,7 +166,7 @@ export default function BindWalletPage() {
       });
   };
 
-  if (sessionStatus === "loading") {
+  if (sessionStatus === "loading" || checking) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-4 pt-20">
         <Card className="w-full max-w-md bg-[#111827] border-white/10">
