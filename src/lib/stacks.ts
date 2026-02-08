@@ -156,8 +156,11 @@ export async function getIdByWallet(
     standardPrincipalCV(wallet),
   ]);
   const json = cvToJSON(result);
-  const val = (json as { value: string | null }).value;
-  return val ? `0x${val}` : null;
+  // cvToJSON returns { value: { type, value: "0x..." } } for optional buffers
+  const inner = (json as { value: { value: string } | null }).value;
+  if (!inner) return null;
+  const hex = typeof inner === "string" ? inner : inner.value;
+  return hex.startsWith("0x") ? hex : `0x${hex}`;
 }
 
 /**
