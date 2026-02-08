@@ -24,12 +24,12 @@ jobs:
 
       - name: Install Clarinet
         run: |
-          curl -sL https://github.com/hirosystems/clarinet/releases/download/v3.13.1/clarinet-linux-x64.tar.gz | tar xz
+          curl -sL https://github.com/hirosystems/clarinet/releases/download/v3.13.1/clarinet-linux-x64-glibc.tar.gz | tar xz
           sudo mv clarinet /usr/local/bin/
           clarinet --version
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Check contracts
         run: clarinet check
@@ -50,7 +50,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run backend tests
         run: npm run test:api
@@ -68,7 +68,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run frontend tests
         run: npm run test:frontend
@@ -95,7 +95,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build
         run: npx next build
