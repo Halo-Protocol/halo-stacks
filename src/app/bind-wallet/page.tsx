@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bufferCV } from "@stacks/transactions";
 import { useWallet } from "../../components/providers/wallet-provider";
 import { useContractCall } from "../../hooks/use-contract-call";
@@ -32,7 +32,8 @@ export default function BindWalletPage() {
 
   const [confirmed, setConfirmed] = useState(false);
   const [initiating, setInitiating] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirmFailed, setConfirmFailed] = useState(false);
+  const confirmingRef = useRef(false);
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -46,10 +47,10 @@ export default function BindWalletPage() {
     }
   }, [connected, router]);
 
-  // When TX is confirmed on-chain, notify backend
+  // When TX is confirmed on-chain, notify backend (once)
   useEffect(() => {
-    if (txStatus === "success" && txId && address && !confirming) {
-      setConfirming(true);
+    if (txStatus === "success" && txId && address && !confirmingRef.current) {
+      confirmingRef.current = true;
       fetchApi("/api/identity/confirm-binding", {
         method: "POST",
         body: JSON.stringify({ txId, walletAddress: address }),
@@ -61,10 +62,11 @@ export default function BindWalletPage() {
         })
         .catch((err) => {
           toast.error(`Confirmation failed: ${err.message}`);
-          setConfirming(false);
+          setConfirmFailed(true);
+          // Don't reset ref — prevents infinite retry loop
         });
     }
-  }, [txStatus, txId, address, confirming, update, router]);
+  }, [txStatus, txId, address, update, router]);
 
   const handleBind = async () => {
     if (!address || !session?.user?.uniqueId) return;
@@ -100,14 +102,33 @@ export default function BindWalletPage() {
     }
   };
 
+  const retryConfirm = () => {
+    if (!txId || !address) return;
+    setConfirmFailed(false);
+    confirmingRef.current = true;
+    fetchApi("/api/identity/confirm-binding", {
+      method: "POST",
+      body: JSON.stringify({ txId, walletAddress: address }),
+    })
+      .then(() => {
+        toast.success("Wallet bound successfully!");
+        update();
+        router.push("/dashboard");
+      })
+      .catch((err) => {
+        toast.error(`Confirmation failed: ${err.message}`);
+        setConfirmFailed(true);
+      });
+  };
+
   if (sessionStatus === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center min-h-[60vh] px-4 pt-20">
+        <Card className="w-full max-w-md bg-[#111827] border-white/10">
           <CardContent className="pt-8 space-y-4">
-            <Skeleton className="h-8 w-3/4 mx-auto" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-8 w-3/4 mx-auto bg-white/10" />
+            <Skeleton className="h-4 w-full bg-white/10" />
+            <Skeleton className="h-12 w-full bg-white/10" />
           </CardContent>
         </Card>
       </div>
@@ -115,28 +136,28 @@ export default function BindWalletPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex items-center justify-center min-h-[60vh] px-4 pt-20">
+      <Card className="w-full max-w-md bg-[#111827] border-white/10">
         <CardHeader className="text-center">
-          <Shield className="h-10 w-10 mx-auto mb-2 text-primary" />
-          <CardTitle className="text-2xl">Bind Your Wallet</CardTitle>
-          <CardDescription>
+          <Shield className="h-10 w-10 mx-auto mb-2 text-white" />
+          <CardTitle className="text-2xl text-white">Bind Your Wallet</CardTitle>
+          <CardDescription className="text-neutral-400">
             Permanently link your wallet to your Halo identity
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Wallet address */}
-          <div className="flex items-center justify-between p-3 rounded-lg border">
-            <span className="text-sm text-muted-foreground">Wallet</span>
-            <Badge variant="outline" className="font-mono text-xs">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-white/10">
+            <span className="text-sm text-neutral-400">Wallet</span>
+            <Badge variant="outline" className="font-mono text-xs border-white/20 text-neutral-300">
               {address?.slice(0, 8)}...{address?.slice(-4)}
             </Badge>
           </div>
 
           {/* Warning */}
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
+          <Alert className="bg-red-500/10 border-red-500/20">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-sm text-red-200">
               This binding is <strong>permanent</strong> and cannot be undone.
               Your wallet address will be permanently linked to your Halo
               identity.
@@ -144,46 +165,56 @@ export default function BindWalletPage() {
           </Alert>
 
           {/* Confirmation checkbox */}
-          <div className="flex items-start gap-3 p-3 rounded-lg border">
+          <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10">
             <Checkbox
               id="confirm"
               checked={confirmed}
               onCheckedChange={(v) => setConfirmed(v === true)}
               disabled={!!txId}
             />
-            <label htmlFor="confirm" className="text-sm cursor-pointer">
+            <label htmlFor="confirm" className="text-sm cursor-pointer text-neutral-300">
               I understand this binding is permanent and I want to proceed
             </label>
           </div>
 
           {/* TX Status */}
           {txId && (
-            <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50">
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-white/5">
               {txStatus === "pending" && (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                  <span className="text-sm text-neutral-300">
                     Transaction pending... (~10-15 minutes)
                   </span>
                 </>
               )}
               {txStatus === "success" && (
                 <>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Transaction confirmed!</span>
+                  <CheckCircle className="h-4 w-4 text-green-400" />
+                  <span className="text-sm text-neutral-300">Transaction confirmed!</span>
                 </>
               )}
               {txStatus === "failed" && (
                 <>
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  <span className="text-sm">Transaction failed</span>
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                  <span className="text-sm text-red-300">Transaction failed</span>
                 </>
               )}
             </div>
           )}
 
+          {confirmFailed && txStatus === "success" && (
+            <Button
+              variant="outline"
+              className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
+              onClick={retryConfirm}
+            >
+              Retry Confirmation
+            </Button>
+          )}
+
           {txError && (
-            <p className="text-sm text-destructive text-center">{txError}</p>
+            <p className="text-sm text-red-400 text-center">{txError}</p>
           )}
 
           {/* Bind button */}
