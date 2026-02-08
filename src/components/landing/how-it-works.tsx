@@ -1,47 +1,71 @@
-import { Card, CardContent } from "../ui/card";
-import { Users, CreditCard, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { Button } from "../ui/button";
 
 const steps = [
   {
-    icon: Users,
-    title: "Join a Circle",
+    step: "01",
+    title: "Sign Up & Verify",
     description:
-      "Create or join a lending circle with 3-10 members. Each member contributes a fixed amount of STX every round.",
+      "Create your account with Google or GitHub and verify your identity to join the Halo Protocol community.",
   },
   {
-    icon: CreditCard,
-    title: "Make Payments",
+    step: "02",
+    title: "Connect Wallet",
     description:
-      "Contribute STX each round. One member receives the full pot as a payout. The rotation continues until everyone has received.",
+      "Link your Leather or Xverse wallet. This binding is permanent and ensures one account per person.",
   },
   {
-    icon: TrendingUp,
-    title: "Build Credit",
+    step: "03",
+    title: "Join or Create a Circle",
     description:
-      "Every on-time payment increases your on-chain credit score. Completing circles and staking sBTC boost it further.",
+      "Find an existing circle to join or create your own with custom contribution amounts and schedules.",
+  },
+  {
+    step: "04",
+    title: "Contribute & Build Credit",
+    description:
+      "Make your contributions on time. Each payment builds your credit score and brings you closer to your payout.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 bg-muted/50">
-      <div className="container">
-        <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {steps.map((step, i) => (
-            <Card key={i} className="relative">
-              <CardContent className="pt-8 pb-6 px-6 text-center">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                  {i + 1}
+    <section
+      id="how-it-works"
+      className="py-20 px-4 border-t border-white/10"
+    >
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            How It Works
+          </h2>
+          <p className="text-neutral-400">
+            Get started in minutes with these simple steps
+          </p>
+        </div>
+
+        <div className="space-y-12">
+          {steps.map((item) => (
+            <div key={item.step} className="flex gap-6">
+              <div className="shrink-0">
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white font-mono text-sm">
+                  {item.step}
                 </div>
-                <step.icon className="h-10 w-10 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {step.description}
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {item.title}
+                </h3>
+                <p className="text-neutral-400">{item.description}</p>
+              </div>
+            </div>
           ))}
+        </div>
+
+        <div className="text-center mt-16">
+          <Button size="lg" asChild>
+            <Link href="/signin">Start Building Credit</Link>
+          </Button>
         </div>
       </div>
     </section>
