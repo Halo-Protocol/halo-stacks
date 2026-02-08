@@ -8,7 +8,12 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import { AppConfig, UserSession, showConnect } from "@stacks/connect";
+import {
+  AppConfig,
+  UserSession,
+  request,
+  getStacksProvider,
+} from "@stacks/connect";
 
 interface WalletContextType {
   connected: boolean;
@@ -62,41 +67,51 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = useCallback(async () => {
     setConnecting(true);
     try {
-      await showConnect({
-        appDetails: {
-          name: "Halo Protocol",
-          icon:
-            typeof window !== "undefined"
-              ? window.location.origin + "/logo.svg"
-              : "/logo.svg",
-        },
-        onFinish: () => {
-          const userData = userSession.loadUserData();
-          const network =
-            process.env.NEXT_PUBLIC_STACKS_NETWORK || "testnet";
-          const addr =
-            network === "mainnet"
-              ? userData.profile?.stxAddress?.mainnet
-              : userData.profile?.stxAddress?.testnet;
-          if (!addr) {
-            console.error(
-              "[wallet] Connected but no address found in profile"
-            );
-            setConnecting(false);
-            return;
-          }
-          setConnected(true);
-          setAddress(addr);
-          setConnecting(false);
-        },
-        onCancel: () => {
-          console.log("[wallet] User cancelled wallet connection");
-          setConnecting(false);
-        },
-        userSession,
-      });
+      // Get the wallet extension provider directly — bypasses the
+      // @stacks/connect-ui Stencil modal which doesn't render in Next.js
+      const provider = getStacksProvider();
+      if (!provider) {
+        console.error("[wallet] No Stacks wallet extension found");
+        setConnecting(false);
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await request(
+        { provider },
+        "getAddresses"
+      );
+
+      // Find the STX address from the response
+      const stxEntry = result.addresses?.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (a: any) => a.symbol === "STX" || a.address?.startsWith("S")
+      );
+      const addr = stxEntry?.address;
+
+      if (!addr) {
+        console.error("[wallet] No STX address in wallet response");
+        setConnecting(false);
+        return;
+      }
+
+      // Store in userSession for compatibility with contract calls
+      const sessionData = userSession.store.getSessionData();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ud = (sessionData as any).userData ?? { profile: {} };
+      ud.profile = ud.profile ?? {};
+      ud.profile.stxAddress = ud.profile.stxAddress ?? { mainnet: "", testnet: "" };
+      const isMainnet = addr[1] === "P" || addr[1] === "M";
+      ud.profile.stxAddress[isMainnet ? "mainnet" : "testnet"] = addr;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sessionData as any).userData = ud;
+      userSession.store.setSessionData(sessionData);
+
+      setConnected(true);
+      setAddress(addr);
+      setConnecting(false);
     } catch (error) {
-      console.error("[wallet] Failed to open wallet connect:", error);
+      console.error("[wallet] Failed to connect:", error);
       setConnecting(false);
     }
   }, []);
