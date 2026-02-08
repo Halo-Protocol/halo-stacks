@@ -26,7 +26,7 @@ import { toast } from "sonner";
 export default function BindWalletPage() {
   const { data: session, status: sessionStatus, update } = useSession();
   const { connected, address } = useWallet();
-  const { loading: txLoading, txId, error: txError, call } = useContractCall();
+  const { loading: txLoading, txId, error: txError, call, reset: resetTx } = useContractCall();
   const txStatus = useTxStatus(txId);
   const router = useRouter();
 
@@ -197,10 +197,26 @@ export default function BindWalletPage() {
               {txStatus === "failed" && (
                 <>
                   <AlertTriangle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm text-red-300">Transaction failed</span>
+                  <span className="text-sm text-red-300">
+                    Transaction failed on-chain. This can happen if the wallet
+                    or ID was already bound.
+                  </span>
                 </>
               )}
             </div>
+          )}
+
+          {txStatus === "failed" && (
+            <Button
+              variant="outline"
+              className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
+              onClick={() => {
+                resetTx();
+                confirmingRef.current = false;
+              }}
+            >
+              Try Again
+            </Button>
           )}
 
           {confirmFailed && txStatus === "success" && (
