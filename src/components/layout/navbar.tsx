@@ -14,6 +14,7 @@ import {
 } from "../ui/dropdown-menu";
 import {
   CircleDot,
+  CreditCard,
   LayoutDashboard,
   TrendingUp,
   User,
@@ -54,6 +55,12 @@ export function Navbar() {
                 >
                   Credit Score
                 </Link>
+                <Link
+                  href="/card"
+                  className="text-sm text-neutral-400 hover:text-white transition-colors"
+                >
+                  Card
+                </Link>
               </>
             ) : (
               <>
@@ -74,6 +81,12 @@ export function Navbar() {
                   className="text-sm text-neutral-400 hover:text-white transition-colors"
                 >
                   About
+                </Link>
+                <Link
+                  href="/card"
+                  className="text-sm text-neutral-400 hover:text-white transition-colors"
+                >
+                  Card
                 </Link>
               </>
             )}
@@ -123,6 +136,12 @@ export function Navbar() {
                     <Link href="/credit" className="text-neutral-300">
                       <TrendingUp className="h-4 w-4 mr-2" />
                       Credit Score
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/card" className="text-neutral-300">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Card
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
