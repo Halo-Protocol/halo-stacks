@@ -14,6 +14,7 @@ import {
   Twitter,
   Github,
 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { toast } from "sonner";
@@ -76,11 +77,14 @@ function HaloCard3D() {
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-white/10 rounded-2xl" />
         <div className="absolute inset-0 bg-gradient-to-tr from-[#00ff9d]/20 via-transparent to-orange-500/10 rounded-2xl" />
         <div className="absolute top-6 left-6 md:top-8 md:left-8">
-          <div className="flex items-center gap-2 mb-4 md:mb-6">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-[#00ff9d] to-cyan-400 flex items-center justify-center">
-              <span className="text-sm md:text-base font-bold text-black">H</span>
-            </div>
-            <span className="text-lg md:text-xl font-bold tracking-wider text-white">HALO</span>
+          <div className="mb-4 md:mb-6">
+            <Image
+              src="/halo-logo.png"
+              alt="HALO"
+              width={120}
+              height={40}
+              className="h-8 md:h-10 w-auto brightness-0 invert"
+            />
           </div>
           <div className="font-mono text-xs md:text-sm text-white/60 tracking-widest">
             **** **** **** 2847
@@ -557,12 +561,16 @@ function Footer() {
   return (
     <footer className="border-t border-white/5 py-8 px-4">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00ff9d] to-cyan-400 flex items-center justify-center">
-            <span className="text-sm font-bold text-black">H</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/halo-logo.png"
+            alt="HALO"
+            width={80}
+            height={28}
+            className="h-6 w-auto brightness-0 invert"
+          />
           <span className="text-sm text-zinc-400">
-            HALO. Decentralized lending circles on Bitcoin.
+            Decentralized lending circles on Bitcoin.
           </span>
         </div>
         <div className="flex items-center gap-6">
