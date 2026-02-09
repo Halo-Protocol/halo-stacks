@@ -90,6 +90,12 @@ export default function CircleDetailPage() {
     `/api/circles/${id}`,
   );
 
+  // Must call ALL hooks before any early returns (Rules of Hooks)
+  const { data: onChainData } = useApi<{
+    currentRound: number;
+    status: number;
+  }>(circle?.onChainId ? `/api/circles/${id}/on-chain` : null);
+
   if (loading) {
     return (
       <div className="container max-w-3xl py-8 space-y-6">
@@ -118,10 +124,6 @@ export default function CircleDetailPage() {
     );
   }
 
-  const { data: onChainData } = useApi<{
-    currentRound: number;
-    status: number;
-  }>(circle?.onChainId ? `/api/circles/${id}/on-chain` : null);
   const currentRound = onChainData?.currentRound ?? 0;
   const isMember = circle.members.some(
     (m) => m.userId === session?.user?.id,

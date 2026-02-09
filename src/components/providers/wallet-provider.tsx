@@ -15,12 +15,21 @@ import {
   getStacksProvider,
 } from "@stacks/connect";
 
+type WalletType = "leather" | "xverse";
+
+interface DetectedWallets {
+  leather: boolean;
+  xverse: boolean;
+}
+
 interface WalletContextType {
   connected: boolean;
   address: string | null;
   connecting: boolean;
   walletInstalled: boolean;
+  detectedWallets: DetectedWallets;
   connect: () => void;
+  connectWith: (wallet: WalletType) => void;
   disconnect: () => void;
   userSession: UserSession;
 }
@@ -30,11 +39,33 @@ const WalletContext = createContext<WalletContextType | null>(null);
 const appConfig = new AppConfig(["store_write", "publish_data"]);
 const userSession = new UserSession({ appConfig });
 
-function detectWallet(): boolean {
-  if (typeof window === "undefined") return false;
+// Module-level provider so useContractCall can access it without context
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _selectedProvider: any = null;
+
+/** Returns the wallet provider chosen during connect, or the default */
+export function getSelectedProvider() {
+  return _selectedProvider || getStacksProvider();
+}
+
+function detectWallets(): DetectedWallets {
+  if (typeof window === "undefined") return { leather: false, xverse: false };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const w = window as any;
-  return !!(w.StacksProvider || w.XverseProviders);
+  return {
+    leather: !!w.StacksProvider,
+    xverse: !!w.XverseProviders?.StacksProvider,
+  };
+}
+
+function getProviderFor(wallet: WalletType) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  if (wallet === "xverse" && w.XverseProviders?.StacksProvider) {
+    return w.XverseProviders.StacksProvider;
+  }
+  // Leather (or fallback)
+  return w.StacksProvider || getStacksProvider();
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
@@ -42,12 +73,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [walletInstalled, setWalletInstalled] = useState(false);
+  const [detected, setDetected] = useState<DetectedWallets>({ leather: false, xverse: false });
 
   useEffect(() => {
-    const checkWallet = () => setWalletInstalled(detectWallet());
-    checkWallet();
+    const check = () => {
+      const d = detectWallets();
+      setDetected(d);
+      setWalletInstalled(d.leather || d.xverse);
+    };
+    check();
     // Re-check after a delay — extensions may inject late
-    const timer = setTimeout(checkWallet, 1000);
+    const timer = setTimeout(check, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -64,21 +100,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connect = useCallback(async () => {
+  const doConnect = useCallback(async (provider: unknown) => {
     setConnecting(true);
     try {
-      // Get the wallet extension provider directly — bypasses the
-      // @stacks/connect-ui Stencil modal which doesn't render in Next.js
-      const provider = getStacksProvider();
       if (!provider) {
         console.error("[wallet] No Stacks wallet extension found");
         setConnecting(false);
         return;
       }
 
+      _selectedProvider = provider;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result: any = await request(
-        { provider },
+        { provider: provider as any },
         "getAddresses"
       );
 
@@ -116,8 +151,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const connect = useCallback(() => {
+    doConnect(getStacksProvider());
+  }, [doConnect]);
+
+  const connectWith = useCallback(
+    (wallet: WalletType) => {
+      doConnect(getProviderFor(wallet));
+    },
+    [doConnect],
+  );
+
   const disconnect = useCallback(() => {
     userSession.signUserOut();
+    _selectedProvider = null;
     setConnected(false);
     setAddress(null);
   }, []);
@@ -128,11 +175,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       address,
       connecting,
       walletInstalled,
+      detectedWallets: detected,
       connect,
+      connectWith,
       disconnect,
       userSession,
     }),
-    [connected, address, connecting, walletInstalled, connect, disconnect]
+    [connected, address, connecting, walletInstalled, detected, connect, connectWith, disconnect]
   );
 
   return (

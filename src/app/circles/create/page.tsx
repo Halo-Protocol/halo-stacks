@@ -123,9 +123,14 @@ export default function CreateCirclePage() {
     }
   };
 
+  const inviteLink =
+    result?.inviteCode && typeof window !== "undefined"
+      ? `${window.location.origin}/join/${result.inviteCode}`
+      : result?.inviteLink || "";
+
   const copyInviteLink = () => {
-    if (result?.inviteLink) {
-      navigator.clipboard.writeText(result.inviteLink);
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
       toast.success("Invite link copied!");
     }
   };
@@ -232,17 +237,18 @@ export default function CreateCirclePage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Round Duration</Label>
-              <Select value={roundDuration} onValueChange={setRoundDuration}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="roundDuration">Round Duration (days)</Label>
+              <Input
+                id="roundDuration"
+                type="number"
+                value={roundDuration}
+                onChange={(e) => setRoundDuration(e.target.value)}
+                min="7"
+                max="90"
+              />
+              <p className="text-xs text-muted-foreground">
+                7–90 days per round. Tip: match to member count (e.g. {totalMembers} members = {totalMembers} × {roundDuration} = {parseInt(totalMembers) * parseInt(roundDuration || "0")} total days)
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Grace Period</Label>
@@ -368,7 +374,7 @@ export default function CreateCirclePage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50">
               <code className="flex-1 text-sm truncate">
-                {result.inviteLink}
+                {inviteLink}
               </code>
               <Button variant="ghost" size="sm" onClick={copyInviteLink}>
                 <Copy className="h-4 w-4" />

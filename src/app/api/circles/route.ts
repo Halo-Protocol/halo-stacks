@@ -9,9 +9,7 @@ const createCircleSchema = z.object({
   name: z.string().min(3).max(30),
   contributionAmount: z.number().int().positive(),
   totalMembers: z.number().int().min(3).max(10),
-  roundDurationDays: z.number().int().refine((v) => [7, 14, 30].includes(v), {
-    message: "Round duration must be 7, 14, or 30 days",
-  }),
+  roundDurationDays: z.number().int().min(7).max(90),
   gracePeriodDays: z.number().int().min(1).max(7).default(1),
   tokenType: z.number().int().min(0).max(1).default(0),
   tokenContract: z.string().optional(),

@@ -43,6 +43,8 @@ export async function GET(
     name: circle.name,
     contributionAmount: circle.contributionAmount.toString(),
     totalMembers: circle.totalMembers,
+    roundDuration: circle.roundDuration,
+    gracePeriod: circle.gracePeriod,
     tokenType: circle.tokenType,
     tokenContract: circle.tokenContract,
     inviteCode: circle.inviteCode,

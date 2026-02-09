@@ -18,8 +18,12 @@ interface FaucetResult {
   sbtcTxId: string | null;
   hUsdAmount: string;
   sbtcAmount: string;
+  hUsdError?: string;
+  sbtcError?: string;
   message: string;
 }
+
+const EXPLORER = "https://explorer.hiro.so/txid";
 
 export function FaucetCard() {
   const [loading, setLoading] = useState(false);
@@ -64,14 +68,32 @@ export function FaucetCard() {
         {result ? (
           <div className="space-y-2 text-sm">
             {result.hUsdTxId && (
-              <p className="text-green-600">
+              <a
+                href={`${EXPLORER}/${result.hUsdTxId}?chain=testnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-green-600 hover:underline"
+              >
                 hUSD mint: {result.hUsdTxId.slice(0, 12)}...
-              </p>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+            {result.hUsdError && (
+              <p className="text-red-500">hUSD failed: {result.hUsdError}</p>
             )}
             {result.sbtcTxId && (
-              <p className="text-green-600">
+              <a
+                href={`${EXPLORER}/${result.sbtcTxId}?chain=testnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-green-600 hover:underline"
+              >
                 sBTC mint: {result.sbtcTxId.slice(0, 12)}...
-              </p>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+            {result.sbtcError && (
+              <p className="text-red-500">sBTC failed: {result.sbtcError}</p>
             )}
             <p className="text-xs text-muted-foreground">{result.message}</p>
           </div>

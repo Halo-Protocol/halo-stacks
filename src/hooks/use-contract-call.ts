@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from "react";
 import type { ClarityValue } from "@stacks/transactions";
-import { request, getStacksProvider } from "@stacks/connect";
+import { request } from "@stacks/connect";
+import { getSelectedProvider } from "../components/providers/wallet-provider";
 import { DEPLOYER_ADDRESS, STACKS_NETWORK } from "../lib/contracts";
 
 interface ContractCallOptions {
@@ -30,9 +31,8 @@ export function useContractCall() {
   const call = useCallback(async (options: ContractCallOptions) => {
     setState({ loading: true, txId: null, error: null });
     try {
-      // Get the wallet extension provider directly — bypasses the
-      // @stacks/connect-ui Stencil modal which doesn't render in Next.js
-      const provider = getStacksProvider();
+      // Get the wallet provider chosen during connect (or default)
+      const provider = getSelectedProvider();
       if (!provider) {
         setState({
           loading: false,

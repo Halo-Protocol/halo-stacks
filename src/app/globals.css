@@ -182,3 +182,31 @@
 .credit-gauge-progress {
   transition: stroke-dasharray 1s ease-out;
 }
+
+/* ===========================================
+   Card Landing Page Styles
+   =========================================== */
+
+.text-glow-green {
+  text-shadow: 0 0 20px hsl(158 100% 50% / 0.5);
+}
+
+.glass-card-hover {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.glass-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 30px rgba(0, 255, 157, 0.08);
+}
+
+@keyframes typing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-typing {
+  animation: typing 1s ease-in-out infinite;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}

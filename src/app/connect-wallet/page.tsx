@@ -25,7 +25,7 @@ import {
 
 export default function ConnectWalletPage() {
   const { data: session, status: sessionStatus } = useSession();
-  const { connected, address, connecting, walletInstalled, connect } =
+  const { connected, address, connecting, walletInstalled, detectedWallets, connect, connectWith } =
     useWallet();
   const router = useRouter();
 
@@ -64,23 +64,94 @@ export default function ConnectWalletPage() {
         <CardContent className="space-y-4">
           {!connected ? (
             <>
-              <Button
-                className="w-full h-12"
-                onClick={connect}
-                disabled={connecting}
-              >
-                {connecting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="h-5 w-5 mr-2" />
-                    Connect Leather / Xverse
-                  </>
-                )}
-              </Button>
+              {/* Show per-wallet buttons when both detected */}
+              {detectedWallets.leather && detectedWallets.xverse ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-center text-neutral-500">
+                    Choose your wallet
+                  </p>
+                  <Button
+                    className="w-full h-12"
+                    variant="outline"
+                    onClick={() => connectWith("leather")}
+                    disabled={connecting}
+                  >
+                    {connecting ? (
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    ) : (
+                      <Wallet className="h-5 w-5 mr-2" />
+                    )}
+                    Connect Leather
+                  </Button>
+                  <Button
+                    className="w-full h-12"
+                    variant="outline"
+                    onClick={() => connectWith("xverse")}
+                    disabled={connecting}
+                  >
+                    {connecting ? (
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    ) : (
+                      <Wallet className="h-5 w-5 mr-2" />
+                    )}
+                    Connect Xverse
+                  </Button>
+                </div>
+              ) : detectedWallets.leather ? (
+                <Button
+                  className="w-full h-12"
+                  onClick={() => connectWith("leather")}
+                  disabled={connecting}
+                >
+                  {connecting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-5 w-5 mr-2" />
+                      Connect Leather
+                    </>
+                  )}
+                </Button>
+              ) : detectedWallets.xverse ? (
+                <Button
+                  className="w-full h-12"
+                  onClick={() => connectWith("xverse")}
+                  disabled={connecting}
+                >
+                  {connecting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-5 w-5 mr-2" />
+                      Connect Xverse
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  className="w-full h-12"
+                  onClick={connect}
+                  disabled={connecting}
+                >
+                  {connecting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-5 w-5 mr-2" />
+                      Connect Wallet
+                    </>
+                  )}
+                </Button>
+              )}
               <p className="text-xs text-center text-neutral-500">
                 A popup will appear to approve the connection
               </p>
@@ -90,7 +161,7 @@ export default function ConnectWalletPage() {
                   <Alert className="bg-yellow-500/10 border-yellow-500/20">
                     <AlertTriangle className="h-4 w-4 text-yellow-400" />
                     <AlertDescription className="text-sm text-yellow-200">
-                      No wallet extension detected. You may need to install one:
+                      No wallet extension detected. Install one to continue:
                     </AlertDescription>
                   </Alert>
                   <a

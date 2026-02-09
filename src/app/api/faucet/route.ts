@@ -68,6 +68,8 @@ export async function POST() {
   const network = networkFromName("testnet");
   let hUsdTxId: string | null = null;
   let sbtcTxId: string | null = null;
+  let hUsdError: string | null = null;
+  let sbtcError: string | null = null;
 
   try {
     // Mint hUSD
@@ -93,6 +95,11 @@ export async function POST() {
     });
     if ("txid" in hUsdResult) {
       hUsdTxId = hUsdResult.txid;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = hUsdResult as any;
+      hUsdError = r.error || r.reason || "Broadcast rejected";
+      console.error("[faucet] hUSD broadcast rejected:", hUsdResult);
     }
 
     // Mint sBTC
@@ -118,9 +125,17 @@ export async function POST() {
     });
     if ("txid" in sbtcResult) {
       sbtcTxId = sbtcResult.txid;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = sbtcResult as any;
+      sbtcError = r.error || r.reason || "Broadcast rejected";
+      console.error("[faucet] sBTC broadcast rejected:", sbtcResult);
     }
   } catch (err) {
-    console.error("[faucet] mint transaction failed:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[faucet] mint transaction failed:", msg);
+    if (!hUsdTxId) hUsdError = hUsdError || msg;
+    if (!sbtcTxId) sbtcError = sbtcError || msg;
     resetNonce();
   }
 
@@ -138,7 +153,10 @@ export async function POST() {
 
   if (status === "failed") {
     return NextResponse.json(
-      { error: "Failed to broadcast mint transactions" },
+      {
+        error: "Failed to broadcast mint transactions",
+        details: { hUsdError, sbtcError },
+      },
       { status: 500 },
     );
   }
@@ -148,6 +166,11 @@ export async function POST() {
     sbtcTxId,
     hUsdAmount: HUSD_MINT_AMOUNT.toString(),
     sbtcAmount: SBTC_MINT_AMOUNT.toString(),
-    message: "Tokens will arrive after transaction confirmation (~10-30 min)",
+    ...(hUsdError && { hUsdError }),
+    ...(sbtcError && { sbtcError }),
+    message:
+      status === "partial"
+        ? "Some tokens may not arrive — check explorer for details"
+        : "Tokens will arrive after transaction confirmation (~10-30 min)",
   });
 }
