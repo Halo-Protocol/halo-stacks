@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { CircleDot } from "lucide-react";
+import Image from "next/image";
 
 export default function SignInPage() {
   const { data: session, status } = useSession();
@@ -57,7 +57,13 @@ export default function SignInPage() {
       <Card className="relative z-10 w-full max-w-md bg-[#111827] border-white/10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <CircleDot className="h-10 w-10 text-white" />
+            <Image
+              src="/halo-logo.png"
+              alt="Halo"
+              width={120}
+              height={40}
+              className="h-10 w-auto brightness-0 invert"
+            />
           </div>
           <CardTitle className="text-2xl text-white">
             Welcome to Halo

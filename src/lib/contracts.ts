@@ -26,6 +26,18 @@ export const CONTRACTS = {
     address: DEPLOYER_ADDRESS,
     name: "halo-mock-token",
   },
+  mockSbtc: {
+    address: DEPLOYER_ADDRESS,
+    name: "halo-mock-sbtc",
+  },
+  vaultV2: {
+    address: DEPLOYER_ADDRESS,
+    name: "halo-vault-v2",
+  },
+  circleV2: {
+    address: DEPLOYER_ADDRESS,
+    name: "halo-circle-v2",
+  },
 } as const;
 
 export const BLOCKS_PER_DAY = 144;

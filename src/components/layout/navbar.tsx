@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../providers/wallet-provider";
@@ -15,11 +16,11 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import {
-  CircleDot,
   CreditCard,
   ExternalLink,
   LayoutDashboard,
   Loader2,
+  Shield,
   TrendingUp,
   User,
   LogOut,
@@ -99,8 +100,13 @@ export function Navbar() {
             href="/"
             className="flex items-center gap-2 font-bold text-xl text-white"
           >
-            <CircleDot className="h-6 w-6" />
-            <span>Halo</span>
+            <Image
+              src="/halo-logo.png"
+              alt="Halo"
+              width={80}
+              height={28}
+              className="h-6 w-auto brightness-0 invert"
+            />
           </Link>
 
           {/* Navigation */}
@@ -112,6 +118,12 @@ export function Navbar() {
                   className="text-sm text-neutral-400 hover:text-white transition-colors"
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/vault"
+                  className="text-sm text-neutral-400 hover:text-white transition-colors"
+                >
+                  Vault
                 </Link>
                 <Link
                   href="/credit"
@@ -243,6 +255,12 @@ export function Navbar() {
                     <Link href="/dashboard" className="text-neutral-300">
                       <LayoutDashboard className="h-4 w-4 mr-2" />
                       Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/vault" className="text-neutral-300">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Vault
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

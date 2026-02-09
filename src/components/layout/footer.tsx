@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDot } from "lucide-react";
+import Image from "next/image";
 
 const footerLinks = {
   Product: [
@@ -40,8 +40,13 @@ export function Footer() {
               href="/"
               className="flex items-center gap-2 font-bold text-lg text-white mb-4"
             >
-              <CircleDot className="h-5 w-5" />
-              <span>Halo</span>
+              <Image
+                src="/halo-logo.png"
+                alt="Halo"
+                width={80}
+                height={28}
+                className="h-5 w-auto brightness-0 invert"
+              />
             </Link>
             <p className="text-sm text-neutral-500">
               Build credit through community lending circles on the Stacks

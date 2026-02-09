@@ -8,23 +8,32 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  socialProvider String   @map("social_provider")
-  socialId      String   @map("social_id")
-  uniqueId      String   @unique @map("unique_id")
-  walletAddress String?  @unique @map("wallet_address")
-  bindingTxId   String?  @map("binding_tx_id")
-  status        String   @default("pending_wallet")
-  createdAt     DateTime @default(now()) @map("created_at")
-  walletBoundAt DateTime? @map("wallet_bound_at")
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String
+  socialProvider String    @map("social_provider")
+  socialId       String    @map("social_id")
+  uniqueId       String    @unique @map("unique_id")
+  walletAddress  String?   @unique @map("wallet_address")
+  bindingTxId    String?   @map("binding_tx_id")
+  status         String    @default("pending_wallet")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  walletBoundAt  DateTime? @map("wallet_bound_at")
 
-  circles         CircleMember[]
-  createdCircles  Circle[]       @relation("creator")
-  contributions   Contribution[]
-  creditScore     CreditScore?
-  faucetRequests  FaucetRequest[]
+  circles        CircleMember[]
+  createdCircles Circle[]        @relation("creator")
+  contributions  Contribution[]
+  creditScore    CreditScore?
+  faucetRequests FaucetRequest[]
+
+  // V2 relations
+  circlesV2        CircleMemberV2[]
+  createdCirclesV2 CircleV2[]       @relation("v2creator")
+  bidsV2           BidV2[]
+  roundWinsV2      RoundResultV2[]
+  contributionsV2  ContributionV2[]
+  repaymentsV2     RepaymentV2[]
+  vaultDeposits    VaultDeposit[]
 
   @@unique([socialProvider, socialId])
   @@map("users")
@@ -155,4 +164,156 @@ model Waitlist {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("waitlist")
+}
+
+// ============================================
+// V2 Models — Bidding Chit Fund + Multi-Asset Vault
+// ============================================
+
+model CircleV2 {
+  id                 String    @id @default(uuid())
+  onChainId          Int?      @unique @map("on_chain_id")
+  creatorId          String    @map("creator_id")
+  name               String
+  contributionAmount BigInt    @map("contribution_amount")
+  totalMembers       Int       @map("total_members")
+  roundDuration      Int       @map("round_duration")
+  bidWindowBlocks    Int       @map("bid_window_blocks")
+  gracePeriod        Int       @map("grace_period")
+  tokenType          Int       @default(0) @map("token_type")
+  tokenContract      String?   @map("token_contract")
+  inviteCode         String    @unique @map("invite_code")
+  status             String    @default("pending_creation")
+  creationTxId       String?   @map("creation_tx_id")
+  currentRound       Int       @default(0) @map("current_round")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  startedAt          DateTime? @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+  onChainRound       Int?      @map("on_chain_round")
+  onChainStatus      Int?      @map("on_chain_status")
+  lastSyncedAt       DateTime? @map("last_synced_at")
+
+  creator       User             @relation("v2creator", fields: [creatorId], references: [id])
+  members       CircleMemberV2[]
+  bids          BidV2[]
+  roundResults  RoundResultV2[]
+  contributions ContributionV2[]
+  repayments    RepaymentV2[]
+
+  @@index([creatorId])
+  @@map("circles_v2")
+}
+
+model CircleMemberV2 {
+  id          String    @id @default(uuid())
+  circleId    String    @map("circle_id")
+  userId      String    @map("user_id")
+  status      String    @default("pending_join")
+  joinTxId    String?   @map("join_tx_id")
+  joinedAt    DateTime? @map("joined_at")
+  hasWon      Boolean   @default(false) @map("has_won")
+  wonRound    Int?      @map("won_round")
+  wonAmount   BigInt?   @map("won_amount")
+  totalRepaid BigInt    @default(0) @map("total_repaid")
+
+  circle CircleV2 @relation(fields: [circleId], references: [id])
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId])
+  @@index([circleId])
+  @@index([userId])
+  @@map("circle_members_v2")
+}
+
+model BidV2 {
+  id        String   @id @default(uuid())
+  circleId  String   @map("circle_id")
+  userId    String   @map("user_id")
+  round     Int
+  bidAmount BigInt   @map("bid_amount")
+  txId      String?  @map("tx_id")
+  bidAt     DateTime @default(now()) @map("bid_at")
+
+  circle CircleV2 @relation(fields: [circleId], references: [id])
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId, round])
+  @@index([circleId])
+  @@map("bids_v2")
+}
+
+model RoundResultV2 {
+  id                String   @id @default(uuid())
+  circleId          String   @map("circle_id")
+  round             Int
+  winnerId          String   @map("winner_id")
+  winningBid        BigInt   @map("winning_bid")
+  poolTotal         BigInt   @map("pool_total")
+  protocolFee       BigInt   @map("protocol_fee")
+  surplus           BigInt
+  dividendPerMember BigInt   @map("dividend_per_member")
+  settleTxId        String?  @map("settle_tx_id")
+  settledAt         DateTime @default(now()) @map("settled_at")
+
+  circle CircleV2 @relation(fields: [circleId], references: [id])
+  winner User     @relation(fields: [winnerId], references: [id])
+
+  @@unique([circleId, round])
+  @@index([circleId])
+  @@map("round_results_v2")
+}
+
+model ContributionV2 {
+  id            String   @id @default(uuid())
+  circleId      String   @map("circle_id")
+  userId        String   @map("user_id")
+  round         Int
+  amount        BigInt
+  onTime        Boolean  @map("on_time")
+  txId          String   @map("tx_id")
+  contributedAt DateTime @default(now()) @map("contributed_at")
+
+  circle CircleV2 @relation(fields: [circleId], references: [id])
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId, round])
+  @@index([circleId])
+  @@index([userId])
+  @@map("contributions_v2")
+}
+
+model RepaymentV2 {
+  id             String    @id @default(uuid())
+  circleId       String    @map("circle_id")
+  userId         String    @map("user_id")
+  repaymentRound Int       @map("repayment_round")
+  amountDue      BigInt    @map("amount_due")
+  amountPaid     BigInt    @default(0) @map("amount_paid")
+  txId           String?   @map("tx_id")
+  onTime         Boolean   @default(false) @map("on_time")
+  paidAt         DateTime? @map("paid_at")
+
+  circle CircleV2 @relation(fields: [circleId], references: [id])
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@unique([circleId, userId, repaymentRound])
+  @@index([circleId])
+  @@index([userId])
+  @@map("repayments_v2")
+}
+
+model VaultDeposit {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  assetType Int      @map("asset_type")
+  amount    BigInt
+  txId      String?  @map("tx_id")
+  action    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([assetType])
+  @@map("vault_deposits_v2")
 }

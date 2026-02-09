@@ -89,6 +89,16 @@ plan:
             path: contracts/halo-circle.clar
             clarity-version: 3
         - emulated-contract-publish:
+            contract-name: halo-vault-v2
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/halo-vault-v2.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: halo-circle-v2
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/halo-circle-v2.clar
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: halo-mock-sbtc
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/halo-mock-sbtc.clar
