@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useApi } from "../../hooks/use-api";
+import { useWallet } from "../../components/providers/wallet-provider";
 import { CreditScoreCard } from "../../components/dashboard/credit-score-card";
 import { CirclesList } from "../../components/dashboard/circles-list";
 import { EmptyState } from "../../components/dashboard/empty-state";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Plus } from "lucide-react";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Plus, Wallet } from "lucide-react";
 import { FaucetCard } from "../../components/dashboard/faucet-card";
 
 interface CreditScore {
@@ -36,7 +38,10 @@ interface Circle {
 
 export default function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
+  const { connected } = useWallet();
   const router = useRouter();
+  const needsReconnect =
+    session?.user?.status === "active" && !connected;
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -81,6 +86,25 @@ export default function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      {needsReconnect && (
+        <Alert className="bg-yellow-500/10 border-yellow-500/20">
+          <Wallet className="h-4 w-4 text-yellow-400" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-sm text-yellow-200">
+              Your wallet is not connected. Reconnect to make transactions.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-4 border-yellow-500/30 text-yellow-200 hover:bg-yellow-500/10"
+              onClick={() => router.push("/connect-wallet")}
+            >
+              Reconnect
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Credit Score + Faucet */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">

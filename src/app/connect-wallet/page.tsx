@@ -35,11 +35,14 @@ export default function ConnectWalletPage() {
     }
   }, [sessionStatus, router]);
 
+  const isReconnect = session?.user?.status === "active";
+
   useEffect(() => {
-    if (session?.user?.status === "active") {
+    // If user is active AND wallet is already connected, go to dashboard
+    if (isReconnect && connected) {
       router.push("/dashboard");
     }
-  }, [session, router]);
+  }, [isReconnect, connected, router]);
 
   if (sessionStatus === "loading") {
     return (
@@ -55,10 +58,12 @@ export default function ConnectWalletPage() {
         <CardHeader className="text-center">
           <Wallet className="h-10 w-10 mx-auto mb-2 text-white" />
           <CardTitle className="text-2xl text-white">
-            Connect Your Wallet
+            {isReconnect ? "Reconnect Your Wallet" : "Connect Your Wallet"}
           </CardTitle>
           <CardDescription className="text-neutral-400">
-            Connect your Stacks wallet to continue setting up your account
+            {isReconnect
+              ? "Your wallet session expired. Reconnect to continue using Halo."
+              : "Connect your Stacks wallet to continue setting up your account"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -216,20 +221,32 @@ export default function ConnectWalletPage() {
                 </Badge>
               </div>
 
-              <Alert className="bg-white/5 border-white/10">
-                <AlertDescription className="text-sm text-neutral-300">
-                  Next, you will permanently bind this wallet to your Halo
-                  identity. This is a one-time on-chain transaction.
-                </AlertDescription>
-              </Alert>
+              {isReconnect ? (
+                <Button
+                  className="w-full h-12"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Go to Dashboard
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
+                <>
+                  <Alert className="bg-white/5 border-white/10">
+                    <AlertDescription className="text-sm text-neutral-300">
+                      Next, you will permanently bind this wallet to your Halo
+                      identity. This is a one-time on-chain transaction.
+                    </AlertDescription>
+                  </Alert>
 
-              <Button
-                className="w-full h-12"
-                onClick={() => router.push("/bind-wallet")}
-              >
-                Continue to Wallet Binding
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+                  <Button
+                    className="w-full h-12"
+                    onClick={() => router.push("/bind-wallet")}
+                  >
+                    Continue to Wallet Binding
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </>
+              )}
             </>
           )}
         </CardContent>
