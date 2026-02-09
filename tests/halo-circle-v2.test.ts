@@ -1493,4 +1493,415 @@ describe("halo-circle-v2", () => {
       expect(result).toBeUint(2);
     });
   });
+
+  // ------------------------------------------
+  // 10. Fix #19 — Collateral release with repayment verification
+  // ------------------------------------------
+  describe("Fix #19: Collateral release with repayment check", () => {
+    it("releases collateral for members who never won", () => {
+      setupActiveCircle();
+
+      // Run all 3 rounds to completion
+      // Round 0
+      allContribute();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRound();
+
+      // wallet1 won round 0, must repay in rounds 1 and 2
+      // Round 1
+      allContribute();
+      makeRepaymentStx(wallet1); // wallet1 repays round 1
+
+      mineIntoBidWindow(1);
+      placeBid(wallet2, 20_000_000);
+      minePastBidWindow(1);
+      processRound();
+
+      // wallet2 won round 1, must repay in round 2
+      // Round 2
+      allContribute();
+      makeRepaymentStx(wallet1); // wallet1 repays round 2
+      makeRepaymentStx(wallet2); // wallet2 repays round 2
+
+      mineIntoBidWindow(2);
+      placeBid(wallet3, 25_000_000);
+      minePastBidWindow(2);
+
+      // Process round 2 -> circle completes
+      const { result: settleResult } = processRound();
+      expect(settleResult).toBeOk(Cl.uint(25_000_000));
+
+      // Circle should be completed
+      const { result: circleResult } = getCircle();
+      const circle = (circleResult as any).value.value;
+      expect(circle.status).toBeUint(3); // STATUS_COMPLETED
+
+      // wallet3 never won, so collateral should be released (no commitment left)
+      const { result: commitResult } = simnet.callReadOnlyFn(
+        "halo-vault-v2",
+        "get-circle-commitment",
+        [Cl.principal(wallet3), Cl.uint(1)],
+        deployer,
+      );
+      expect(commitResult).toHaveClarityType(ClarityType.OptionalNone);
+    });
+
+    it("slashes collateral for winners who did not fully repay", () => {
+      setupActiveCircle();
+
+      // Round 0: wallet1 wins
+      allContribute();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRound();
+
+      // Round 1: wallet1 does NOT repay, wallet2 wins
+      allContribute();
+      // wallet1 skips repayment!
+
+      mineIntoBidWindow(1);
+      placeBid(wallet2, 20_000_000);
+      minePastBidWindow(1);
+      processRound();
+
+      // Round 2: wallet1 still does NOT repay, wallet3 wins -> circle completes
+      allContribute();
+      makeRepaymentStx(wallet2); // wallet2 repays
+      // wallet1 still skips repayment!
+
+      mineIntoBidWindow(2);
+      placeBid(wallet3, 25_000_000);
+      minePastBidWindow(2);
+
+      // Get wallet1's balance before completion
+      const stxBefore = simnet.getAssetsMap().get("STX")!.get(wallet1) || 0n;
+
+      processRound();
+
+      // Circle completed
+      const { result: circleResult } = getCircle();
+      const circle = (circleResult as any).value.value;
+      expect(circle.status).toBeUint(3);
+
+      // wallet1's member data should show has-won=true but total-repaid=0
+      const { result: memberResult } = getMember(wallet1);
+      const member = (memberResult as any).value.value;
+      expect(member["has-won"]).toBeBool(true);
+      expect(member["won-amount"]).toBeUint(15_000_000);
+      expect(member["total-repaid"]).toBeUint(0);
+
+      // wallet1's commitment should be deleted (slashed removes it)
+      const { result: commitResult } = simnet.callReadOnlyFn(
+        "halo-vault-v2",
+        "get-circle-commitment",
+        [Cl.principal(wallet1), Cl.uint(1)],
+        deployer,
+      );
+      expect(commitResult).toHaveClarityType(ClarityType.OptionalNone);
+    });
+
+    it("releases collateral for winners who fully repaid", () => {
+      setupActiveCircle();
+
+      // Round 0: wallet1 wins
+      allContribute();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRound();
+
+      // Round 1: wallet1 repays, wallet2 wins
+      allContribute();
+      makeRepaymentStx(wallet1);
+
+      mineIntoBidWindow(1);
+      placeBid(wallet2, 20_000_000);
+      minePastBidWindow(1);
+      processRound();
+
+      // Round 2: wallet1+wallet2 repay, wallet3 wins -> circle completes
+      allContribute();
+      makeRepaymentStx(wallet1);
+      makeRepaymentStx(wallet2);
+
+      mineIntoBidWindow(2);
+      placeBid(wallet3, 25_000_000);
+      minePastBidWindow(2);
+      processRound();
+
+      // All members fully repaid, so all commitments should be released
+      for (const w of [wallet1, wallet2, wallet3]) {
+        const { result: commitResult } = simnet.callReadOnlyFn(
+          "halo-vault-v2",
+          "get-circle-commitment",
+          [Cl.principal(w), Cl.uint(1)],
+          deployer,
+        );
+        expect(commitResult).toHaveClarityType(ClarityType.OptionalNone);
+      }
+    });
+  });
+
+  // ------------------------------------------
+  // 11. Fix #21 — SIP-010 token settlement
+  // ------------------------------------------
+  describe("Fix #21: SIP-010 token settlement (process-round-v2-token)", () => {
+    const tokenContract = `${deployer}.halo-mock-token`;
+
+    function setupTokenCircle() {
+      setupIdentities();
+      authorizeCircleV2();
+
+      // Configure hUSD asset (type 0, 80% LTV, 6 decimals)
+      simnet.callPublicFn(
+        "halo-vault-v2",
+        "configure-asset",
+        [Cl.uint(0), Cl.some(Cl.principal(tokenContract)), Cl.uint(8000), Cl.uint(6)],
+        deployer,
+      );
+      simnet.callPublicFn(
+        "halo-vault-v2",
+        "set-asset-price",
+        [Cl.uint(0), Cl.uint(1000000)], // $1.00
+        deployer,
+      );
+      simnet.callPublicFn(
+        "halo-vault-v2",
+        "authorize-contract",
+        [Cl.principal(`${deployer}.${contractName}`)],
+        deployer,
+      );
+
+      // Mint tokens and deposit to vault for each wallet
+      for (const w of [wallet1, wallet2, wallet3]) {
+        simnet.callPublicFn(
+          "halo-mock-token",
+          "mint",
+          [Cl.uint(1_000_000_000), Cl.principal(w)],
+          deployer,
+        );
+        // Deposit hUSD to vault
+        simnet.callPublicFn(
+          "halo-vault-v2",
+          "deposit-husd",
+          [Cl.principal(tokenContract), Cl.uint(500_000_000)],
+          w,
+        );
+      }
+
+      // Create a token circle
+      simnet.callPublicFn(
+        contractName,
+        "create-token-circle-v2",
+        [
+          circleName,
+          Cl.principal(tokenContract),
+          Cl.uint(10_000_000), // 10 hUSD
+          Cl.uint(3),
+          roundDuration,
+          bidWindowBlocks,
+          gracePeriod,
+        ],
+        wallet1,
+      );
+
+      // Join
+      joinCircle(wallet2);
+      joinCircle(wallet3);
+    }
+
+    function contributeToken(wallet: string, circleId: number = 1) {
+      return simnet.callPublicFn(
+        contractName,
+        "contribute-token-v2",
+        [Cl.uint(circleId), Cl.principal(tokenContract)],
+        wallet,
+      );
+    }
+
+    function allContributeToken(circleId: number = 1) {
+      contributeToken(wallet1, circleId);
+      contributeToken(wallet2, circleId);
+      contributeToken(wallet3, circleId);
+    }
+
+    function processRoundToken(circleId: number = 1) {
+      return simnet.callPublicFn(
+        contractName,
+        "process-round-v2-token",
+        [Cl.uint(circleId), Cl.principal(tokenContract)],
+        deployer,
+      );
+    }
+
+    function claimDividend(wallet: string, round: number, circleId: number = 1) {
+      return simnet.callPublicFn(
+        contractName,
+        "claim-dividend-token",
+        [Cl.uint(circleId), Cl.uint(round), Cl.principal(tokenContract)],
+        wallet,
+      );
+    }
+
+    it("rejects process-round-v2-token for STX circles", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+
+      const { result } = simnet.callPublicFn(
+        contractName,
+        "process-round-v2-token",
+        [Cl.uint(1), Cl.principal(tokenContract)],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(827)); // ERR_INVALID_TOKEN_TYPE
+    });
+
+    it("settles a token circle round via process-round-v2-token", () => {
+      setupTokenCircle();
+
+      // Contribute
+      allContributeToken();
+
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000); // bid 15 hUSD
+      minePastBidWindow(0);
+
+      // Process round with token
+      const { result } = processRoundToken();
+      expect(result).toBeOk(Cl.uint(15_000_000));
+
+      // Check round result
+      const { result: roundResult } = getRoundResult(0);
+      const rr = (roundResult as any).value.value;
+      expect(rr.winner).toBePrincipal(wallet1);
+      expect(rr["winning-bid"]).toBeUint(15_000_000);
+    });
+
+    it("records pending dividends for non-winner members", () => {
+      setupTokenCircle();
+      allContributeToken();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRoundToken();
+
+      // Check pending dividends for non-winners
+      const { result: div2 } = simnet.callReadOnlyFn(
+        contractName,
+        "get-pending-dividend",
+        [Cl.uint(1), Cl.uint(0), Cl.principal(wallet2)],
+        deployer,
+      );
+      expect(div2).toHaveClarityType(ClarityType.OptionalSome);
+      const divData2 = (div2 as any).value.value;
+      expect(divData2.claimed).toBeBool(false);
+      expect(Number(divData2.amount.value)).toBeGreaterThan(0);
+
+      // Winner should not have a pending dividend
+      const { result: divWinner } = simnet.callReadOnlyFn(
+        contractName,
+        "get-pending-dividend",
+        [Cl.uint(1), Cl.uint(0), Cl.principal(wallet1)],
+        deployer,
+      );
+      expect(divWinner).toHaveClarityType(ClarityType.OptionalNone);
+    });
+
+    it("allows non-winners to claim dividends", () => {
+      setupTokenCircle();
+      allContributeToken();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRoundToken();
+
+      // wallet2 claims dividend
+      const { result: claimResult } = claimDividend(wallet2, 0);
+      // Claim should succeed (returns ok with dividend amount)
+      expect(claimResult).toHaveClarityType(ClarityType.ResponseOk);
+
+      // Verify dividend is marked as claimed
+      const { result: divAfter } = simnet.callReadOnlyFn(
+        contractName,
+        "get-pending-dividend",
+        [Cl.uint(1), Cl.uint(0), Cl.principal(wallet2)],
+        deployer,
+      );
+      const divData = (divAfter as any).value.value;
+      expect(divData.claimed).toBeBool(true);
+    });
+
+    it("prevents double-claiming dividends", () => {
+      setupTokenCircle();
+      allContributeToken();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      processRoundToken();
+
+      // First claim succeeds
+      claimDividend(wallet2, 0);
+
+      // Second claim fails
+      const { result } = claimDividend(wallet2, 0);
+      expect(result).toBeErr(Cl.uint(808)); // ERR_ALREADY_CONTRIBUTED
+    });
+
+    it("runs a full token circle lifecycle (3 rounds)", () => {
+      setupTokenCircle();
+
+      // Round 0: wallet1 bids and wins
+      allContributeToken();
+      mineIntoBidWindow(0);
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+      const { result: r0 } = processRoundToken();
+      expect(r0).toBeOk(Cl.uint(15_000_000));
+
+      // Round 1: wallet1 repays, wallet2 bids and wins
+      allContributeToken();
+      simnet.callPublicFn(
+        contractName,
+        "make-repayment-token",
+        [Cl.uint(1), Cl.principal(tokenContract)],
+        wallet1,
+      );
+      mineIntoBidWindow(1);
+      placeBid(wallet2, 20_000_000);
+      minePastBidWindow(1);
+      const { result: r1 } = processRoundToken();
+      expect(r1).toBeOk(Cl.uint(20_000_000));
+
+      // Round 2: wallet1+wallet2 repay, wallet3 auto-wins
+      allContributeToken();
+      simnet.callPublicFn(
+        contractName,
+        "make-repayment-token",
+        [Cl.uint(1), Cl.principal(tokenContract)],
+        wallet1,
+      );
+      simnet.callPublicFn(
+        contractName,
+        "make-repayment-token",
+        [Cl.uint(1), Cl.principal(tokenContract)],
+        wallet2,
+      );
+      mineIntoBidWindow(2);
+      placeBid(wallet3, 25_000_000);
+      minePastBidWindow(2);
+      const { result: r2 } = processRoundToken();
+      expect(r2).toBeOk(Cl.uint(25_000_000));
+
+      // Circle completed
+      const { result: circleResult } = getCircle();
+      const circle = (circleResult as any).value.value;
+      expect(circle.status).toBeUint(3); // STATUS_COMPLETED
+    });
+  });
 });

@@ -150,6 +150,12 @@
 ;; Ordered member list
 (define-map circle-member-list-v2 uint (list 10 principal))
 
+;; Pending token dividends (for SIP-010 circles, claim-based distribution)
+(define-map pending-dividends { circle-id: uint, round: uint, member: principal } {
+  amount: uint,
+  claimed: bool
+})
+
 ;; ============================================
 ;; READ-ONLY FUNCTIONS
 ;; ============================================
@@ -192,6 +198,10 @@
 
 (define-read-only (get-admin)
   (var-get admin)
+)
+
+(define-read-only (get-pending-dividend (circle-id uint) (round uint) (member principal))
+  (map-get? pending-dividends { circle-id: circle-id, round: round, member: member })
 )
 
 ;; Check if user has a bound wallet
@@ -802,6 +812,167 @@
   )
 )
 
+;; Process the current round for SIP-010 token circles
+(define-public (process-round-v2-token (circle-id uint) (token <ft-trait>))
+  (let (
+    (circle (unwrap! (map-get? circles-v2 circle-id) ERR_CIRCLE_NOT_FOUND))
+    (current-round (get current-round circle))
+    (members (get-circle-members circle-id))
+    (total-members (get total-members circle))
+    (contribution-amount (get contribution-amount circle))
+    (pool-total (* contribution-amount total-members))
+    (contribution-count (count-round-contributions circle-id current-round))
+  )
+    ;; Must be a SIP-010 circle
+    (asserts! (is-eq (get token-type circle) TOKEN_TYPE_SIP010) ERR_INVALID_TOKEN_TYPE)
+    (asserts! (is-eq (some (contract-of token)) (get token-contract circle)) ERR_TOKEN_MISMATCH)
+
+    ;; Circle must be active
+    (asserts! (is-eq (get status circle) STATUS_ACTIVE) ERR_CIRCLE_NOT_ACTIVE)
+
+    ;; All contributions must be in
+    (asserts! (is-eq contribution-count total-members) ERR_CONTRIBUTIONS_INCOMPLETE)
+
+    ;; Bid window must have ended
+    (asserts! (is-bid-window-ended circle-id current-round) ERR_BID_WINDOW_NOT_ENDED)
+
+    ;; Not already processed
+    (asserts! (is-none (map-get? round-results { circle-id: circle-id, round: current-round }))
+              ERR_ALREADY_PROCESSED)
+
+    ;; Find lowest bidder using fold
+    (let (
+      (bid-result (fold find-lowest-bid members {
+        circle-id: circle-id,
+        round: current-round,
+        lowest-bid: MAX_UINT,
+        lowest-bidder: CONTRACT_OWNER
+      }))
+    )
+      ;; Must have at least one bid
+      (asserts! (< (get lowest-bid bid-result) MAX_UINT) ERR_NO_BIDS)
+
+      (let (
+        (winner (get lowest-bidder bid-result))
+        (winning-bid (get lowest-bid bid-result))
+        (protocol-fee (/ (* pool-total (var-get protocol-fee-rate)) u10000))
+        (surplus (- (- pool-total winning-bid) protocol-fee))
+        (non-winner-count (- total-members u1))
+        (dividend-per-member (if (> non-winner-count u0)
+          (/ surplus non-winner-count) u0))
+      )
+        ;; Transfer winning bid to winner via token
+        (try! (as-contract (contract-call? token transfer winning-bid tx-sender winner none)))
+
+        ;; Transfer protocol fee to admin via token
+        (if (> protocol-fee u0)
+          (try! (as-contract (contract-call? token transfer protocol-fee tx-sender (var-get admin) none)))
+          true
+        )
+
+        ;; Record pending dividends for non-winner members (claim-based)
+        (var-set temp-circle-id circle-id)
+        (let (
+          (distribute-result (fold record-pending-dividend members {
+            circle-id: circle-id,
+            round: current-round,
+            winner: winner,
+            dividend: dividend-per-member,
+            distributed-count: u0,
+            total-members: total-members,
+            surplus: surplus
+          }))
+        )
+          true
+        )
+
+        ;; Record round result
+        (map-set round-results { circle-id: circle-id, round: current-round } {
+          winner: winner,
+          winning-bid: winning-bid,
+          pool-total: pool-total,
+          protocol-fee: protocol-fee,
+          surplus: surplus,
+          dividend-per-member: dividend-per-member,
+          settled-at: stacks-block-height
+        })
+
+        ;; Mark winner
+        (let (
+          (winner-data (unwrap-panic (map-get? circle-members-v2 { circle-id: circle-id, member: winner })))
+        )
+          (map-set circle-members-v2 { circle-id: circle-id, member: winner }
+            (merge winner-data {
+              has-won: true,
+              won-round: current-round,
+              won-amount: winning-bid
+            })
+          )
+        )
+
+        ;; Create repayment schedule for winner
+        (let (
+          (remaining-rounds (- total-members (+ current-round u1)))
+          (repayment-per-round (if (> remaining-rounds u0)
+            (/ winning-bid remaining-rounds) u0))
+        )
+          (if (> remaining-rounds u0)
+            (begin
+              (fold setup-repayment-round
+                (list u1 u2 u3 u4 u5 u6 u7 u8 u9)
+                {
+                  circle-id: circle-id,
+                  winner: winner,
+                  current-round: current-round,
+                  total-members: total-members,
+                  repayment-per-round: repayment-per-round,
+                  winning-bid: winning-bid,
+                  remaining-rounds: remaining-rounds,
+                  setup-count: u0
+                }
+              )
+              true
+            )
+            true
+          )
+        )
+
+        ;; Advance round
+        (let (
+          (next-round (+ current-round u1))
+        )
+          (map-set circles-v2 circle-id
+            (merge circle {
+              total-paid-out: (+ (get total-paid-out circle) winning-bid),
+              current-round: next-round
+            })
+          )
+
+          ;; Complete if all rounds done
+          (if (>= next-round total-members)
+            (try! (internal-complete-circle circle-id))
+            true
+          )
+        )
+
+        (print {
+          event: "round-settled-v2",
+          circle-id: circle-id,
+          round: current-round,
+          winner: winner,
+          winning-bid: winning-bid,
+          protocol-fee: protocol-fee,
+          surplus: surplus,
+          dividend-per-member: dividend-per-member,
+          token-type: TOKEN_TYPE_SIP010
+        })
+
+        (ok winning-bid)
+      )
+    )
+  )
+)
+
 ;; ============================================
 ;; PUBLIC FUNCTIONS -- REPAYMENT
 ;; ============================================
@@ -923,6 +1094,60 @@
     })
 
     (ok true)
+  )
+)
+
+;; ============================================
+;; PUBLIC FUNCTIONS -- DIVIDEND CLAIMS
+;; ============================================
+
+;; Claim pending token dividend for a specific round
+(define-public (claim-dividend-token (circle-id uint) (round uint) (token <ft-trait>))
+  (let (
+    (caller tx-sender)
+    (circle (unwrap! (map-get? circles-v2 circle-id) ERR_CIRCLE_NOT_FOUND))
+    (dividend-data (unwrap! (map-get? pending-dividends
+                    { circle-id: circle-id, round: round, member: caller })
+                  ERR_NOT_FOUND))
+    (amount (get amount dividend-data))
+  )
+    ;; Must be a SIP-010 circle
+    (asserts! (is-eq (get token-type circle) TOKEN_TYPE_SIP010) ERR_INVALID_TOKEN_TYPE)
+    (asserts! (is-eq (some (contract-of token)) (get token-contract circle)) ERR_TOKEN_MISMATCH)
+
+    ;; Must not already claimed
+    (asserts! (not (get claimed dividend-data)) ERR_ALREADY_CONTRIBUTED)
+
+    ;; Must have a positive amount
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+
+    ;; Transfer tokens from contract to member
+    (try! (as-contract (contract-call? token transfer amount tx-sender caller none)))
+
+    ;; Mark as claimed
+    (map-set pending-dividends { circle-id: circle-id, round: round, member: caller }
+      (merge dividend-data { claimed: true })
+    )
+
+    ;; Update member's dividend total
+    (match (map-get? circle-members-v2 { circle-id: circle-id, member: caller })
+      member-data (map-set circle-members-v2 { circle-id: circle-id, member: caller }
+        (merge member-data {
+          total-dividends-received: (+ (get total-dividends-received member-data) amount)
+        })
+      )
+      true
+    )
+
+    (print {
+      event: "dividend-claimed",
+      circle-id: circle-id,
+      round: round,
+      member: caller,
+      amount: amount
+    })
+
+    (ok amount)
   )
 )
 
@@ -1055,23 +1280,61 @@
   )
 )
 
-;; Release collateral for a member on completion
+;; Release collateral for a member on completion (with repayment verification)
 (define-private (internal-complete-member (member principal))
   (let (
     (cid (var-get temp-circle-id))
+    (member-data (map-get? circle-members-v2 { circle-id: cid, member: member }))
   )
-    (begin
-      (match (contract-call? .halo-vault-v2 release-collateral member cid)
-        success true
-        error false
+    (match member-data
+      mdata (let (
+        (has-won (get has-won mdata))
+        (won-amount (get won-amount mdata))
+        (total-repaid (get total-repaid mdata))
+        (fully-repaid (or (not has-won) (>= total-repaid won-amount)))
       )
-      (match (contract-call? .halo-identity get-id-by-wallet member)
-        unique-id (match (contract-call? .halo-credit record-circle-completion unique-id true)
-          success true
-          error false
+        (if fully-repaid
+          ;; Member either never won or fully repaid -- release collateral
+          (begin
+            (match (contract-call? .halo-vault-v2 release-collateral member cid)
+              success true
+              error false
+            )
+            (match (contract-call? .halo-identity get-id-by-wallet member)
+              unique-id (match (contract-call? .halo-credit record-circle-completion unique-id true)
+                success true
+                error false
+              )
+              false
+            )
+          )
+          ;; Member won but did NOT fully repay -- slash outstanding amount
+          (let (
+            (outstanding (- won-amount total-repaid))
+            (circle (unwrap-panic (map-get? circles-v2 cid)))
+            (asset-type (if (is-eq (get token-type circle) TOKEN_TYPE_STX) ASSET_TYPE_STX ASSET_TYPE_HUSD))
+          )
+            ;; Slash collateral for the outstanding amount
+            (match (contract-call? .halo-vault-v2 calculate-commitment-usd outstanding u1 asset-type)
+              slash-usd (match (contract-call? .halo-vault-v2 slash-collateral member cid slash-usd)
+                success true
+                error false
+              )
+              error false
+            )
+            ;; Record circle completion as defaulted
+            (match (contract-call? .halo-identity get-id-by-wallet member)
+              unique-id (match (contract-call? .halo-credit record-circle-completion unique-id false)
+                success true
+                error false
+              )
+              false
+            )
+          )
         )
-        false
       )
+      ;; No member data found (shouldn't happen)
+      true
     )
   )
 )
@@ -1116,7 +1379,49 @@
   )
 )
 
-;; Fold helper: distribute dividends to non-winner members
+;; Fold helper: record pending token dividends for non-winner members (SIP-010)
+(define-private (record-pending-dividend
+  (member principal)
+  (state {
+    circle-id: uint,
+    round: uint,
+    winner: principal,
+    dividend: uint,
+    distributed-count: uint,
+    total-members: uint,
+    surplus: uint
+  })
+)
+  (if (is-eq member (get winner state))
+    state ;; Skip winner
+    (let (
+      (new-count (+ (get distributed-count state) u1))
+      (is-last-recipient (is-eq new-count (- (get total-members state) u1)))
+      ;; Last non-winner gets remainder to handle rounding dust
+      (already-distributed (* (get dividend state) (get distributed-count state)))
+      (this-dividend (if is-last-recipient
+        (- (get surplus state) already-distributed)
+        (get dividend state)))
+    )
+      (if (> this-dividend u0)
+        (begin
+          (map-set pending-dividends {
+            circle-id: (get circle-id state),
+            round: (get round state),
+            member: member
+          } {
+            amount: this-dividend,
+            claimed: false
+          })
+          (merge state { distributed-count: new-count })
+        )
+        (merge state { distributed-count: new-count })
+      )
+    )
+  )
+)
+
+;; Fold helper: distribute dividends to non-winner members (STX only)
 (define-private (distribute-dividend
   (member principal)
   (state {
@@ -1151,7 +1456,7 @@
           error state ;; Transfer failed, continue
         )
       )
-      ;; For SIP-010: dividends handled in the process-round-v2-token variant
+      ;; For SIP-010: dividends handled via claim-based record-pending-dividend
       (merge state { distributed-count: (+ (get distributed-count state) u1) })
     )
   )
