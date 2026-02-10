@@ -49,6 +49,8 @@
 (define-constant ERR_NOT_FOUND (err u825))
 (define-constant ERR_TOKEN_MISMATCH (err u826))
 (define-constant ERR_INVALID_TOKEN_TYPE (err u827))
+(define-constant ERR_GRACE_PERIOD_NOT_ENDED (err u828))
+(define-constant ERR_ALL_CONTRIBUTED (err u829))
 
 ;; Circle status
 (define-constant STATUS_FORMING u0)
@@ -431,7 +433,7 @@
 
     ;; Lock collateral
     (let (
-      (asset-type (if (is-eq (get token-type circle) TOKEN_TYPE_STX) ASSET_TYPE_STX ASSET_TYPE_HUSD))
+      (asset-type (get-vault-asset-type (get token-type circle)))
       (commitment-usd (try! (contract-call? .halo-vault-v2 calculate-commitment-usd
                               (get contribution-amount circle)
                               (get total-members circle)
@@ -1098,6 +1100,70 @@
 )
 
 ;; ============================================
+;; PUBLIC FUNCTIONS -- FORCE ADVANCE
+;; ============================================
+
+;; Force-advance a round when contributions are incomplete after grace period.
+;; Slashes non-contributors' collateral and records their default,
+;; then auto-fills missing contributions so the round can proceed to bidding.
+;; Any member can call this after the grace period has passed.
+(define-public (force-advance-round (circle-id uint))
+  (let (
+    (circle (unwrap! (map-get? circles-v2 circle-id) ERR_CIRCLE_NOT_FOUND))
+    (current-round (get current-round circle))
+    (members (get-circle-members circle-id))
+    (total-members (get total-members circle))
+    (contribution-amount (get contribution-amount circle))
+    (contribution-count (count-round-contributions circle-id current-round))
+  )
+    ;; Must be active
+    (asserts! (is-eq (get status circle) STATUS_ACTIVE) ERR_CIRCLE_NOT_ACTIVE)
+
+    ;; Caller must be a member
+    (asserts! (is-some (map-get? circle-members-v2 { circle-id: circle-id, member: tx-sender }))
+              ERR_NOT_MEMBER)
+
+    ;; Grace period must have passed (contributions are late)
+    (asserts! (not (is-payment-on-time circle-id)) ERR_GRACE_PERIOD_NOT_ENDED)
+
+    ;; Not all members have contributed (otherwise just use process-round-v2)
+    (asserts! (< contribution-count total-members) ERR_ALL_CONTRIBUTED)
+
+    ;; Slash non-contributors and auto-record their contributions
+    (var-set temp-circle-id circle-id)
+    (fold slash-non-contributor members {
+      circle-id: circle-id,
+      round: current-round,
+      contribution-amount: contribution-amount,
+      token-type: (get token-type circle),
+      slashed-count: u0
+    })
+
+    ;; Update circle total-contributed for the auto-filled contributions
+    (let (
+      (missing-count (- total-members contribution-count))
+      (auto-filled-total (* missing-count contribution-amount))
+    )
+      (map-set circles-v2 circle-id
+        (merge circle {
+          total-contributed: (+ (get total-contributed circle) auto-filled-total)
+        })
+      )
+    )
+
+    (print {
+      event: "round-force-advanced",
+      circle-id: circle-id,
+      round: current-round,
+      contributions-before: contribution-count,
+      total-members: total-members
+    })
+
+    (ok true)
+  )
+)
+
+;; ============================================
 ;; PUBLIC FUNCTIONS -- DIVIDEND CLAIMS
 ;; ============================================
 
@@ -1180,7 +1246,7 @@
       ;; Slash collateral from vault-v2
       ;; Convert outstanding token amount to USD for slashing
       (let (
-        (asset-type (if (is-eq (get token-type circle) TOKEN_TYPE_STX) ASSET_TYPE_STX ASSET_TYPE_HUSD))
+        (asset-type (get-vault-asset-type (get token-type circle)))
         (slash-usd (try! (contract-call? .halo-vault-v2 calculate-commitment-usd
                            outstanding u1 asset-type)))
       )
@@ -1212,9 +1278,18 @@
 ;; PRIVATE FUNCTIONS
 ;; ============================================
 
-;; Asset type constants for vault interaction
+;; Asset type constants for vault interaction (must match halo-vault-v2)
 (define-constant ASSET_TYPE_HUSD u0)
 (define-constant ASSET_TYPE_STX u1)
+(define-constant ASSET_TYPE_SBTC u2)
+
+;; Map circle token-type to vault asset-type for collateral operations
+(define-private (get-vault-asset-type (token-type uint))
+  (if (is-eq token-type TOKEN_TYPE_STX)
+    ASSET_TYPE_STX
+    ASSET_TYPE_HUSD  ;; SIP-010 tokens use hUSD asset type for collateral
+  )
+)
 
 ;; Add a member to a circle
 (define-private (internal-add-member (circle-id uint) (member principal))
@@ -1312,7 +1387,7 @@
           (let (
             (outstanding (- won-amount total-repaid))
             (circle (unwrap-panic (map-get? circles-v2 cid)))
-            (asset-type (if (is-eq (get token-type circle) TOKEN_TYPE_STX) ASSET_TYPE_STX ASSET_TYPE_HUSD))
+            (asset-type (get-vault-asset-type (get token-type circle)))
           )
             ;; Slash collateral for the outstanding amount
             (match (contract-call? .halo-vault-v2 calculate-commitment-usd outstanding u1 asset-type)
@@ -1376,6 +1451,78 @@
       )
     )
     state ;; Not a member (shouldn't happen)
+  )
+)
+
+;; Fold helper: slash non-contributors and auto-fill their contributions
+(define-private (slash-non-contributor
+  (member principal)
+  (state {
+    circle-id: uint,
+    round: uint,
+    contribution-amount: uint,
+    token-type: uint,
+    slashed-count: uint
+  })
+)
+  (let (
+    (has-contributed (is-some (map-get? contributions-v2 {
+      circle-id: (get circle-id state),
+      member: member,
+      round: (get round state)
+    })))
+  )
+    (if has-contributed
+      state ;; Already contributed, skip
+      (begin
+        ;; Auto-record a late contribution entry
+        (map-set contributions-v2 {
+          circle-id: (get circle-id state),
+          member: member,
+          round: (get round state)
+        } {
+          amount: (get contribution-amount state),
+          contributed-at: stacks-block-height,
+          on-time: false
+        })
+
+        ;; Slash collateral for the missed contribution
+        (let (
+          (asset-type (get-vault-asset-type (get token-type state)))
+        )
+          (match (contract-call? .halo-vault-v2 calculate-commitment-usd
+                   (get contribution-amount state) u1 asset-type)
+            slash-usd (match (contract-call? .halo-vault-v2 slash-collateral
+                        member (get circle-id state) slash-usd)
+              success true
+              error false
+            )
+            error false
+          )
+        )
+
+        ;; Record missed payment in credit (non-critical)
+        (match (contract-call? .halo-identity get-id-by-wallet member)
+          unique-id (match (contract-call? .halo-credit record-payment
+                     unique-id (get circle-id state) (get round state)
+                     (get contribution-amount state) false)
+            success true
+            error false
+          )
+          false
+        )
+
+        (print {
+          event: "non-contributor-slashed",
+          circle-id: (get circle-id state),
+          round: (get round state),
+          member: member,
+          amount: (get contribution-amount state)
+        })
+
+        (merge state { slashed-count: (+ (get slashed-count state) u1) })
+      )
+    )
   )
 )
 

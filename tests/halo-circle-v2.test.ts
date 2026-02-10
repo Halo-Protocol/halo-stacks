@@ -1904,4 +1904,118 @@ describe("halo-circle-v2", () => {
       expect(circle.status).toBeUint(3); // STATUS_COMPLETED
     });
   });
+
+  // ------------------------------------------
+  // 12. Fix #11 — Force-advance round on incomplete contributions
+  // ------------------------------------------
+  describe("Fix #11: force-advance-round", () => {
+    function forceAdvanceRound(wallet: string, circleId: number = 1) {
+      return simnet.callPublicFn(
+        contractName,
+        "force-advance-round",
+        [Cl.uint(circleId)],
+        wallet,
+      );
+    }
+
+    it("rejects force-advance when grace period has not ended", () => {
+      setupActiveCircle();
+      // Only wallet1 contributes — grace period is still active
+      contributeStx(wallet1);
+
+      // Try to force advance immediately (still in grace period)
+      const { result } = forceAdvanceRound(wallet1);
+      expect(result).toBeErr(Cl.uint(828)); // ERR_GRACE_PERIOD_NOT_ENDED
+    });
+
+    it("rejects force-advance when all members have contributed", () => {
+      setupActiveCircle();
+      allContribute();
+
+      // Mine past grace period
+      mineIntoBidWindow(0);
+
+      const { result } = forceAdvanceRound(wallet1);
+      expect(result).toBeErr(Cl.uint(829)); // ERR_ALL_CONTRIBUTED
+    });
+
+    it("rejects force-advance from non-members", () => {
+      setupActiveCircle();
+      contributeStx(wallet1);
+      mineIntoBidWindow(0);
+
+      const { result } = forceAdvanceRound(wallet4); // not a member
+      expect(result).toBeErr(Cl.uint(805)); // ERR_NOT_MEMBER
+    });
+
+    it("force-advances when contributions are incomplete after grace period", () => {
+      setupActiveCircle();
+
+      // Only wallet1 and wallet2 contribute — wallet3 does NOT
+      contributeStx(wallet1);
+      contributeStx(wallet2);
+
+      // Mine past the grace period
+      mineIntoBidWindow(0);
+
+      // Force advance
+      const { result } = forceAdvanceRound(wallet1);
+      expect(result).toBeOk(Cl.bool(true));
+
+      // Now all contributions should be filled (count == 3)
+      const { result: countResult } = simnet.callReadOnlyFn(
+        contractName,
+        "count-round-contributions",
+        [Cl.uint(1), Cl.uint(0)],
+        deployer,
+      );
+      expect(countResult).toBeUint(3);
+    });
+
+    it("slashes non-contributor collateral and allows round to proceed", () => {
+      setupActiveCircle();
+
+      // Only wallet1 contributes
+      contributeStx(wallet1);
+      contributeStx(wallet2);
+      // wallet3 does NOT contribute
+
+      mineIntoBidWindow(0);
+      forceAdvanceRound(wallet1);
+
+      // Now we can bid and settle normally
+      placeBid(wallet1, 15_000_000);
+      minePastBidWindow(0);
+
+      const { result } = processRound();
+      expect(result).toBeOk(Cl.uint(15_000_000));
+
+      // Verify round result exists
+      const { result: roundResult } = getRoundResult(0);
+      const rr = (roundResult as any).value.value;
+      expect(rr.winner).toBePrincipal(wallet1);
+    });
+
+    it("records contribution entry for slashed non-contributor", () => {
+      setupActiveCircle();
+      contributeStx(wallet1);
+      contributeStx(wallet2);
+      // wallet3 missing
+
+      mineIntoBidWindow(0);
+      forceAdvanceRound(wallet1);
+
+      // Check wallet3's contribution was auto-recorded
+      const { result } = simnet.callReadOnlyFn(
+        contractName,
+        "get-contribution",
+        [Cl.uint(1), Cl.principal(wallet3), Cl.uint(0)],
+        deployer,
+      );
+      expect(result).toHaveClarityType(ClarityType.OptionalSome);
+      const contrib = (result as any).value.value;
+      expect(contrib["on-time"]).toBeBool(false);
+      expect(contrib.amount).toBeUint(10_000_000);
+    });
+  });
 });

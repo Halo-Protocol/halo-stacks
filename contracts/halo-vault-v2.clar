@@ -793,7 +793,8 @@
         (remaining-after-stx (get remaining slash-result-stx))
         ;; Then sBTC
         (slash-result-sbtc (slash-from-asset user ASSET_TYPE_SBTC remaining-after-stx))
-        (total-slashed (- slash-usd (get remaining slash-result-sbtc)))
+        (final-remaining (get remaining slash-result-sbtc))
+        (total-slashed (if (> slash-usd final-remaining) (- slash-usd final-remaining) u0))
       )
         (print {
           event: "collateral-slashed-v2",
@@ -849,7 +850,7 @@
                   (- (get total-deposited asset) actual-tokens) u0)
               })
             )
-            { slashed: slash-from-this, remaining: (- slash-usd slash-from-this) }
+            { slashed: slash-from-this, remaining: (if (> slash-usd slash-from-this) (- slash-usd slash-from-this) u0) }
           )
         )
         { slashed: u0, remaining: slash-usd } ;; asset config not found

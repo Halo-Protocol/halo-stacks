@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { uintCV } from "@stacks/transactions";
+import { uintCV, contractPrincipalCV } from "@stacks/transactions";
 import { useContractCall } from "../../hooks/use-contract-call";
 import { fetchApi } from "../../hooks/use-api";
+import { DEPLOYER_ADDRESS } from "../../lib/contracts";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -68,8 +69,14 @@ export function AssetDepositCard({
       const fnName = ASSET_CONTRACT_FN[assetType]?.[mode];
       if (!fnName) throw new Error("Unknown asset type");
 
-      const functionArgs = assetType === 1
-        ? [uintCV(microAmount)]
+      // STX deposit/withdraw only takes amount; hUSD and sBTC require token trait as first arg
+      const TOKEN_CONTRACTS: Record<number, string> = {
+        0: "halo-mock-token",  // hUSD
+        2: "halo-mock-sbtc",   // sBTC
+      };
+      const tokenName = TOKEN_CONTRACTS[assetType];
+      const functionArgs = tokenName
+        ? [contractPrincipalCV(DEPLOYER_ADDRESS, tokenName), uintCV(microAmount)]
         : [uintCV(microAmount)];
 
       await call({
