@@ -51,6 +51,7 @@
 (define-constant ERR_INVALID_TOKEN_TYPE (err u827))
 (define-constant ERR_GRACE_PERIOD_NOT_ENDED (err u828))
 (define-constant ERR_ALL_CONTRIBUTED (err u829))
+(define-constant ERR_BIDS_EXIST (err u830))
 
 ;; Circle status
 (define-constant STATUS_FORMING u0)
@@ -69,6 +70,9 @@
 (define-constant MIN_ROUND_DURATION u144)    ;; ~1 day in blocks
 (define-constant MIN_BID_WINDOW u72)         ;; ~12 hours in blocks
 (define-constant MIN_CONTRIBUTION u1000000)  ;; 1 STX minimum
+
+;; Min bid: 10% of pool (basis points)
+(define-constant MIN_BID_PERCENT u1000)
 
 ;; Max uint for bid comparison initialization
 (define-constant MAX_UINT u340282366920938463463374607431768211455)
@@ -609,6 +613,7 @@
     (pool-total (* (get contribution-amount circle) (get total-members circle)))
     (max-fee (/ (* pool-total (var-get protocol-fee-rate)) u10000))
     (max-bid (- pool-total max-fee))
+    (min-bid (/ (* pool-total MIN_BID_PERCENT) u10000))
   )
     ;; Circle must be active
     (asserts! (is-eq (get status circle) STATUS_ACTIVE) ERR_CIRCLE_NOT_ACTIVE)
@@ -623,8 +628,8 @@
     (asserts! (is-none (map-get? bids { circle-id: circle-id, round: current-round, bidder: caller }))
               ERR_ALREADY_BID)
 
-    ;; Bid amount validation
-    (asserts! (> bid-amount u0) ERR_BID_TOO_LOW)
+    ;; Bid amount validation: must be between 10% and (pool - fee)
+    (asserts! (>= bid-amount min-bid) ERR_BID_TOO_LOW)
     (asserts! (<= bid-amount max-bid) ERR_BID_TOO_HIGH)
 
     ;; Record bid
@@ -708,7 +713,7 @@
           true
         )
 
-        ;; Distribute dividends to non-winner members
+        ;; Distribute dividends to non-winner members (with rounding dust handling)
         (var-set temp-circle-id circle-id)
         (let (
           (distribute-result (fold distribute-dividend members {
@@ -718,11 +723,10 @@
             dividend: dividend-per-member,
             token-type: (get token-type circle),
             distributed-count: u0,
-            total-members: total-members
+            total-members: total-members,
+            surplus: surplus
           }))
         )
-          ;; Handle dividend remainder (rounding) -- give to last non-winner
-          ;; The fold handles this: last non-winner gets surplus - (dividend * (N-2))
           true
         )
 
@@ -1429,6 +1433,21 @@
   )
 )
 
+;; Fold helper: count bids for a round
+(define-private (count-round-bids
+  (member principal)
+  (state { circle-id: uint, round: uint, count: uint })
+)
+  (if (is-some (map-get? bids {
+        circle-id: (get circle-id state),
+        round: (get round state),
+        bidder: member
+      }))
+    (merge state { count: (+ (get count state) u1) })
+    state
+  )
+)
+
 ;; Fold helper: find lowest bid
 (define-private (find-lowest-bid
   (member principal)
@@ -1569,6 +1588,7 @@
 )
 
 ;; Fold helper: distribute dividends to non-winner members (STX only)
+;; Last non-winner gets remainder to absorb rounding dust
 (define-private (distribute-dividend
   (member principal)
   (state {
@@ -1578,29 +1598,40 @@
     dividend: uint,
     token-type: uint,
     distributed-count: uint,
-    total-members: uint
+    total-members: uint,
+    surplus: uint
   })
 )
   (if (is-eq member (get winner state))
     state ;; Skip winner
     (if (is-eq (get token-type state) TOKEN_TYPE_STX)
-      (begin
-        ;; Transfer dividend to this non-winner member
-        (match (as-contract (stx-transfer? (get dividend state) tx-sender member))
-          success (begin
-            ;; Update member's dividend total
-            (match (map-get? circle-members-v2 { circle-id: (get circle-id state), member: member })
-              member-data (map-set circle-members-v2 { circle-id: (get circle-id state), member: member }
-                (merge member-data {
-                  total-dividends-received: (+ (get total-dividends-received member-data)
-                                               (get dividend state))
-                })
+      (let (
+        (new-count (+ (get distributed-count state) u1))
+        (is-last-recipient (is-eq new-count (- (get total-members state) u1)))
+        (already-distributed (* (get dividend state) (get distributed-count state)))
+        (this-dividend (if is-last-recipient
+          (if (> (get surplus state) already-distributed)
+            (- (get surplus state) already-distributed)
+            u0)
+          (get dividend state)))
+      )
+        (if (> this-dividend u0)
+          (match (as-contract (stx-transfer? this-dividend tx-sender member))
+            success (begin
+              ;; Update member's dividend total
+              (match (map-get? circle-members-v2 { circle-id: (get circle-id state), member: member })
+                member-data (map-set circle-members-v2 { circle-id: (get circle-id state), member: member }
+                  (merge member-data {
+                    total-dividends-received: (+ (get total-dividends-received member-data) this-dividend)
+                  })
+                )
+                true
               )
-              true
+              (merge state { distributed-count: new-count })
             )
-            (merge state { distributed-count: (+ (get distributed-count state) u1) })
+            error (merge state { distributed-count: new-count }) ;; Transfer failed, continue
           )
-          error state ;; Transfer failed, continue
+          (merge state { distributed-count: new-count })
         )
       )
       ;; For SIP-010: dividends handled via claim-based record-pending-dividend
@@ -1704,5 +1735,46 @@
       )
       ERR_CIRCLE_NOT_FOUND
     )
+  )
+)
+
+;; Extend bid window when no bids were placed (prevents stuck rounds)
+(define-public (extend-bid-window (circle-id uint) (extra-blocks uint))
+  (let (
+    (circle (unwrap! (map-get? circles-v2 circle-id) ERR_CIRCLE_NOT_FOUND))
+    (current-round (get current-round circle))
+    (members (get-circle-members circle-id))
+  )
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-eq (get status circle) STATUS_ACTIVE) ERR_CIRCLE_NOT_ACTIVE)
+    (asserts! (> extra-blocks u0) ERR_INVALID_PARAMS)
+
+    ;; Bid window must have ended
+    (asserts! (is-bid-window-ended circle-id current-round) ERR_BID_WINDOW_NOT_ENDED)
+
+    ;; No bids must exist for this round
+    (let (
+      (bid-count (get count (fold count-round-bids members
+        { circle-id: circle-id, round: current-round, count: u0 })))
+    )
+      (asserts! (is-eq bid-count u0) ERR_BIDS_EXIST)
+    )
+
+    ;; Extend by increasing the bid-window-blocks
+    (map-set circles-v2 circle-id
+      (merge circle {
+        bid-window-blocks: (+ (get bid-window-blocks circle) extra-blocks)
+      })
+    )
+
+    (print {
+      event: "bid-window-extended",
+      circle-id: circle-id,
+      round: current-round,
+      extra-blocks: extra-blocks,
+      new-bid-window: (+ (get bid-window-blocks circle) extra-blocks)
+    })
+
+    (ok true)
   )
 )

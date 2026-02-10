@@ -1117,13 +1117,13 @@ describe("halo-vault-v2", () => {
         [
           Cl.contractPrincipal(deployer, mockToken),
           Cl.uint(1000_000000), // 1000 hUSD
-          Cl.uint(100), // 100 blocks
+          Cl.uint(200), // 200 blocks (>= MIN_YIELD_DURATION 144)
         ],
         deployer,
       );
       expect(result).toBeOk(Cl.bool(true));
 
-      // Verify rate: 1000_000000 / 100 = 10_000000 per block
+      // Verify rate: 1000_000000 / 200 = 5_000000 per block
       const config = simnet.callReadOnlyFn(
         vaultV2,
         "get-asset-config",
@@ -1132,7 +1132,7 @@ describe("halo-vault-v2", () => {
       );
       expect(config.result).toHaveClarityType(ClarityType.OptionalSome);
       const data = (config.result as any).value.value;
-      expect(data["reward-rate"]).toBeUint(10_000000);
+      expect(data["reward-rate"]).toBeUint(5_000000);
     });
 
     it("fund-yield-stx sets reward rate", () => {
@@ -1143,13 +1143,13 @@ describe("halo-vault-v2", () => {
         "fund-yield-stx",
         [
           Cl.uint(500_000000), // 500 STX
-          Cl.uint(100), // 100 blocks
+          Cl.uint(200), // 200 blocks (>= MIN_YIELD_DURATION 144)
         ],
         deployer,
       );
       expect(result).toBeOk(Cl.bool(true));
 
-      // Verify rate: 500_000000 / 100 = 5_000000 per block
+      // Verify rate: 500_000000 / 200 = 2_500000 per block
       const config = simnet.callReadOnlyFn(
         vaultV2,
         "get-asset-config",
@@ -1157,7 +1157,7 @@ describe("halo-vault-v2", () => {
         deployer,
       );
       const data = (config.result as any).value.value;
-      expect(data["reward-rate"]).toBeUint(5_000000);
+      expect(data["reward-rate"]).toBeUint(2_500000);
     });
 
     it("fund-yield-husd fails for non-admin (err u700)", () => {
@@ -1170,7 +1170,7 @@ describe("halo-vault-v2", () => {
         [
           Cl.contractPrincipal(deployer, mockToken),
           Cl.uint(100_000000),
-          Cl.uint(100),
+          Cl.uint(200),
         ],
         wallet1,
       );
@@ -1655,6 +1655,206 @@ describe("halo-vault-v2", () => {
       );
       // Returns uint directly (not wrapped in ok)
       expect(result).toBeUint(0);
+    });
+  });
+
+  // ============================================
+  // 8. Security Fix Tests
+  // ============================================
+  describe("security fixes", () => {
+    // #20: Emergency pause
+    it("pause-vault blocks deposits (err u713)", () => {
+      setupAllAssets();
+      mintHusd(wallet1, 1000_000000);
+
+      simnet.callPublicFn(vaultV2, "pause-vault", [], deployer);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "deposit-husd",
+        [Cl.contractPrincipal(deployer, mockToken), Cl.uint(100_000000)],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(713));
+    });
+
+    it("pause-vault blocks STX deposits (err u713)", () => {
+      setupAllAssets();
+
+      simnet.callPublicFn(vaultV2, "pause-vault", [], deployer);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "deposit-stx",
+        [Cl.uint(100_000000)],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(713));
+    });
+
+    it("pause-vault blocks withdrawals (err u713)", () => {
+      setupAllAssets();
+      depositStx(wallet1, 100_000000);
+
+      simnet.callPublicFn(vaultV2, "pause-vault", [], deployer);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "withdraw-stx",
+        [Cl.uint(50_000000)],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(713));
+    });
+
+    it("unpause-vault re-enables deposits", () => {
+      setupAllAssets();
+      mintHusd(wallet1, 1000_000000);
+
+      simnet.callPublicFn(vaultV2, "pause-vault", [], deployer);
+      simnet.callPublicFn(vaultV2, "unpause-vault", [], deployer);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "deposit-husd",
+        [Cl.contractPrincipal(deployer, mockToken), Cl.uint(100_000000)],
+        wallet1,
+      );
+      expect(result).toBeOk(Cl.bool(true));
+    });
+
+    it("pause-vault fails for non-admin (err u700)", () => {
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "pause-vault",
+        [],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(700));
+    });
+
+    it("is-vault-paused returns correct state", () => {
+      const before = simnet.callReadOnlyFn(
+        vaultV2,
+        "is-vault-paused",
+        [],
+        deployer,
+      );
+      expect(before.result).toBeBool(false);
+
+      simnet.callPublicFn(vaultV2, "pause-vault", [], deployer);
+
+      const after = simnet.callReadOnlyFn(
+        vaultV2,
+        "is-vault-paused",
+        [],
+        deployer,
+      );
+      expect(after.result).toBeBool(true);
+    });
+
+    // #3: Zero-price blocks deposits
+    it("deposit fails when asset price is zero (err u709)", () => {
+      // Configure asset without setting price (defaults to 0)
+      simnet.callPublicFn(
+        vaultV2,
+        "configure-asset",
+        [Cl.uint(0), Cl.some(Cl.contractPrincipal(deployer, mockToken)), Cl.uint(8000), Cl.uint(6)],
+        deployer,
+      );
+      // Don't set price -- it's 0
+
+      mintHusd(wallet1, 1000_000000);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "deposit-husd",
+        [Cl.contractPrincipal(deployer, mockToken), Cl.uint(100_000000)],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(709));
+    });
+
+    // #5: Decimals capped at 18
+    it("configure-asset rejects decimals > 18 (err u706)", () => {
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "configure-asset",
+        [Cl.uint(0), Cl.some(Cl.contractPrincipal(deployer, mockToken)), Cl.uint(8000), Cl.uint(19)],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(706));
+    });
+
+    // #6: Max LTV capped at 80%
+    it("configure-asset rejects LTV > 80% (err u706)", () => {
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "configure-asset",
+        [Cl.uint(0), Cl.some(Cl.contractPrincipal(deployer, mockToken)), Cl.uint(8100), Cl.uint(6)],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(706));
+    });
+
+    it("configure-asset accepts LTV at exactly 80%", () => {
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "configure-asset",
+        [Cl.uint(0), Cl.some(Cl.contractPrincipal(deployer, mockToken)), Cl.uint(8000), Cl.uint(6)],
+        deployer,
+      );
+      expect(result).toBeOk(Cl.bool(true));
+    });
+
+    // #7: Minimum yield duration
+    it("fund-yield-husd rejects duration < 144 blocks (err u706)", () => {
+      setupAllAssets();
+      mintHusd(deployer, 10000_000000);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "fund-yield-husd",
+        [
+          Cl.contractPrincipal(deployer, mockToken),
+          Cl.uint(1000_000000),
+          Cl.uint(100), // Below MIN_YIELD_DURATION
+        ],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(706));
+    });
+
+    it("fund-yield-stx rejects duration < 144 blocks (err u706)", () => {
+      setupAllAssets();
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "fund-yield-stx",
+        [
+          Cl.uint(500_000000),
+          Cl.uint(50), // Below MIN_YIELD_DURATION
+        ],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(706));
+    });
+
+    it("fund-yield-husd accepts duration >= 144 blocks", () => {
+      setupAllAssets();
+      mintHusd(deployer, 10000_000000);
+
+      const { result } = simnet.callPublicFn(
+        vaultV2,
+        "fund-yield-husd",
+        [
+          Cl.contractPrincipal(deployer, mockToken),
+          Cl.uint(1000_000000),
+          Cl.uint(144), // Exactly MIN_YIELD_DURATION
+        ],
+        deployer,
+      );
+      expect(result).toBeOk(Cl.bool(true));
     });
   });
 });

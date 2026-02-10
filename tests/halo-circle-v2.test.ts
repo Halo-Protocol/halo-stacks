@@ -2018,4 +2018,109 @@ describe("halo-circle-v2", () => {
       expect(contrib.amount).toBeUint(10_000_000);
     });
   });
+
+  // ============================================
+  // 11. Security Fix Tests
+  // ============================================
+  describe("security fixes", () => {
+    // #9: Minimum bid amount (10% of pool)
+    it("bid below 10% of pool rejected (err u818)", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+
+      // Pool = 10_000_000 * 3 = 30_000_000
+      // 10% of pool = 3_000_000
+      const { result } = placeBid(wallet1, 2_000_000); // Below min
+      expect(result).toBeErr(Cl.uint(818)); // ERR_BID_TOO_LOW
+    });
+
+    it("bid at exactly 10% of pool succeeds", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+
+      // 10% of 30_000_000 = 3_000_000
+      const { result } = placeBid(wallet1, 3_000_000);
+      expect(result).toBeOk(Cl.bool(true));
+    });
+
+    // #17: Extend bid window
+    it("extend-bid-window extends when no bids placed", () => {
+      setupActiveCircle();
+      allContribute();
+
+      // Mine past bid window
+      mineIntoBidWindow(0);
+      simnet.mineEmptyBlocks(100); // Past bid window end
+
+      const { result } = simnet.callPublicFn(
+        contractName,
+        "extend-bid-window",
+        [Cl.uint(1), Cl.uint(72)], // extend by 72 blocks
+        deployer,
+      );
+      expect(result).toBeOk(Cl.bool(true));
+
+      // Verify bid window was extended
+      const circle = simnet.callReadOnlyFn(
+        contractName,
+        "get-circle",
+        [Cl.uint(1)],
+        deployer,
+      );
+      const data = (circle.result as any).value.value;
+      expect(data["bid-window-blocks"]).toBeUint(100 + 72); // original 100 + extra 72
+    });
+
+    it("extend-bid-window fails when bids exist (err u830)", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+
+      // Place a bid
+      placeBid(wallet1, 20_000_000);
+
+      // Mine past bid window
+      simnet.mineEmptyBlocks(100);
+
+      const { result } = simnet.callPublicFn(
+        contractName,
+        "extend-bid-window",
+        [Cl.uint(1), Cl.uint(72)],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(830)); // ERR_BIDS_EXIST
+    });
+
+    it("extend-bid-window fails for non-admin (err u800)", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+      simnet.mineEmptyBlocks(100);
+
+      const { result } = simnet.callPublicFn(
+        contractName,
+        "extend-bid-window",
+        [Cl.uint(1), Cl.uint(72)],
+        wallet1,
+      );
+      expect(result).toBeErr(Cl.uint(800)); // ERR_NOT_AUTHORIZED
+    });
+
+    it("extend-bid-window fails before bid window ends (err u823)", () => {
+      setupActiveCircle();
+      allContribute();
+      mineIntoBidWindow(0);
+
+      // Still in bid window
+      const { result } = simnet.callPublicFn(
+        contractName,
+        "extend-bid-window",
+        [Cl.uint(1), Cl.uint(72)],
+        deployer,
+      );
+      expect(result).toBeErr(Cl.uint(823)); // ERR_BID_WINDOW_NOT_ENDED
+    });
+  });
 });

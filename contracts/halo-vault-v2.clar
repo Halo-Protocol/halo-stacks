@@ -31,6 +31,8 @@
 (define-constant ERR_ALREADY_AUTHORIZED (err u710))
 (define-constant ERR_ASSET_NOT_FOUND (err u711))
 (define-constant ERR_ASSET_NOT_ACTIVE (err u712))
+(define-constant ERR_VAULT_PAUSED (err u713))
+(define-constant ERR_RATE_TOO_HIGH (err u714))
 
 ;; Asset type constants
 (define-constant ASSET_TYPE_HUSD u0)
@@ -46,12 +48,16 @@
 ;; Price precision (6 decimals: $1.00 = u1000000)
 (define-constant PRICE_PRECISION u1000000)
 
+;; Minimum yield funding duration (~1 day in blocks)
+(define-constant MIN_YIELD_DURATION u144)
+
 ;; ============================================
 ;; DATA VARIABLES
 ;; ============================================
 
 (define-data-var admin principal CONTRACT_OWNER)
 (define-data-var authorized-contracts (list 10 principal) (list))
+(define-data-var vault-paused bool false)
 
 ;; ============================================
 ;; DATA MAPS
@@ -345,15 +351,14 @@
     (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
+    (asserts! (> (get price-usd asset) u0) ERR_ZERO_PRICE)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_HUSD)
     (update-user-asset-reward caller ASSET_TYPE_HUSD)
 
-    ;; Transfer tokens
-    (try! (contract-call? token transfer amount caller (as-contract tx-sender) none))
-
-    ;; Update user deposit
+    ;; Update user deposit (effects before interactions)
     (let (
       (dep (get-or-create-user-deposit caller ASSET_TYPE_HUSD))
     )
@@ -362,11 +367,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total (effects before interactions)
     (map-set supported-assets ASSET_TYPE_HUSD
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_HUSD))
         { total-deposited: (+ (get total-deposited asset) amount) })
     )
+
+    ;; Transfer tokens (interactions last)
+    (try! (contract-call? token transfer amount caller (as-contract tx-sender) none))
 
     (print { event: "vault-v2-deposit", user: caller, asset-type: ASSET_TYPE_HUSD, amount: amount })
     (ok true)
@@ -381,15 +389,14 @@
   )
     (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
+    (asserts! (> (get price-usd asset) u0) ERR_ZERO_PRICE)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_STX)
     (update-user-asset-reward caller ASSET_TYPE_STX)
 
-    ;; Transfer STX
-    (try! (stx-transfer? amount caller (as-contract tx-sender)))
-
-    ;; Update user deposit
+    ;; Update user deposit (effects before interactions)
     (let (
       (dep (get-or-create-user-deposit caller ASSET_TYPE_STX))
     )
@@ -398,11 +405,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total (effects before interactions)
     (map-set supported-assets ASSET_TYPE_STX
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_STX))
         { total-deposited: (+ (get total-deposited asset) amount) })
     )
+
+    ;; Transfer STX (interactions last)
+    (try! (stx-transfer? amount caller (as-contract tx-sender)))
 
     (print { event: "vault-v2-deposit", user: caller, asset-type: ASSET_TYPE_STX, amount: amount })
     (ok true)
@@ -419,15 +429,14 @@
     (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
+    (asserts! (> (get price-usd asset) u0) ERR_ZERO_PRICE)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_SBTC)
     (update-user-asset-reward caller ASSET_TYPE_SBTC)
 
-    ;; Transfer tokens
-    (try! (contract-call? token transfer amount caller (as-contract tx-sender) none))
-
-    ;; Update user deposit
+    ;; Update user deposit (effects before interactions)
     (let (
       (dep (get-or-create-user-deposit caller ASSET_TYPE_SBTC))
     )
@@ -436,11 +445,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total (effects before interactions)
     (map-set supported-assets ASSET_TYPE_SBTC
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_SBTC))
         { total-deposited: (+ (get total-deposited asset) amount) })
     )
+
+    ;; Transfer tokens (interactions last)
+    (try! (contract-call? token transfer amount caller (as-contract tx-sender) none))
 
     (print { event: "vault-v2-deposit", user: caller, asset-type: ASSET_TYPE_SBTC, amount: amount })
     (ok true)
@@ -493,6 +505,7 @@
   )
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_HUSD)
@@ -501,10 +514,7 @@
     ;; Check withdrawal allowed
     (try! (check-withdrawal-allowed caller ASSET_TYPE_HUSD amount))
 
-    ;; Transfer
-    (try! (as-contract (contract-call? token transfer amount tx-sender caller none)))
-
-    ;; Update deposit
+    ;; Update deposit BEFORE transfer (checks-effects-interactions)
     (let (
       (dep (unwrap-panic (map-get? user-asset-deposits { user: caller, asset-type: ASSET_TYPE_HUSD })))
     )
@@ -513,11 +523,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total BEFORE transfer
     (map-set supported-assets ASSET_TYPE_HUSD
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_HUSD))
         { total-deposited: (- (get total-deposited asset) amount) })
     )
+
+    ;; Transfer (interactions last)
+    (try! (as-contract (contract-call? token transfer amount tx-sender caller none)))
 
     (print { event: "vault-v2-withdraw", user: caller, asset-type: ASSET_TYPE_HUSD, amount: amount })
     (ok true)
@@ -531,6 +544,7 @@
     (asset (unwrap! (map-get? supported-assets ASSET_TYPE_STX) ERR_ASSET_NOT_FOUND))
   )
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_STX)
@@ -539,10 +553,7 @@
     ;; Check withdrawal allowed
     (try! (check-withdrawal-allowed caller ASSET_TYPE_STX amount))
 
-    ;; Transfer STX back
-    (try! (as-contract (stx-transfer? amount tx-sender caller)))
-
-    ;; Update deposit
+    ;; Update deposit BEFORE transfer (checks-effects-interactions)
     (let (
       (dep (unwrap-panic (map-get? user-asset-deposits { user: caller, asset-type: ASSET_TYPE_STX })))
     )
@@ -551,11 +562,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total BEFORE transfer
     (map-set supported-assets ASSET_TYPE_STX
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_STX))
         { total-deposited: (- (get total-deposited asset) amount) })
     )
+
+    ;; Transfer STX back (interactions last)
+    (try! (as-contract (stx-transfer? amount tx-sender caller)))
 
     (print { event: "vault-v2-withdraw", user: caller, asset-type: ASSET_TYPE_STX, amount: amount })
     (ok true)
@@ -571,6 +585,7 @@
   )
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (var-get vault-paused)) ERR_VAULT_PAUSED)
 
     ;; Update yield
     (update-asset-reward ASSET_TYPE_SBTC)
@@ -579,10 +594,7 @@
     ;; Check withdrawal allowed
     (try! (check-withdrawal-allowed caller ASSET_TYPE_SBTC amount))
 
-    ;; Transfer
-    (try! (as-contract (contract-call? token transfer amount tx-sender caller none)))
-
-    ;; Update deposit
+    ;; Update deposit BEFORE transfer (checks-effects-interactions)
     (let (
       (dep (unwrap-panic (map-get? user-asset-deposits { user: caller, asset-type: ASSET_TYPE_SBTC })))
     )
@@ -591,11 +603,14 @@
       )
     )
 
-    ;; Update asset total
+    ;; Update asset total BEFORE transfer
     (map-set supported-assets ASSET_TYPE_SBTC
       (merge (unwrap-panic (map-get? supported-assets ASSET_TYPE_SBTC))
         { total-deposited: (- (get total-deposited asset) amount) })
     )
+
+    ;; Transfer (interactions last)
+    (try! (as-contract (contract-call? token transfer amount tx-sender caller none)))
 
     (print { event: "vault-v2-withdraw", user: caller, asset-type: ASSET_TYPE_SBTC, amount: amount })
     (ok true)
@@ -614,6 +629,7 @@
     (expected-token (unwrap! (get token-principal asset) ERR_TOKEN_NOT_SUPPORTED))
   )
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
+    (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
 
     (update-asset-reward ASSET_TYPE_HUSD)
     (update-user-asset-reward caller ASSET_TYPE_HUSD)
@@ -637,7 +653,10 @@
 (define-public (claim-yield-stx)
   (let (
     (caller tx-sender)
+    (asset (unwrap! (map-get? supported-assets ASSET_TYPE_STX) ERR_ASSET_NOT_FOUND))
   )
+    (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
+
     (update-asset-reward ASSET_TYPE_STX)
     (update-user-asset-reward caller ASSET_TYPE_STX)
 
@@ -664,6 +683,7 @@
     (expected-token (unwrap! (get token-principal asset) ERR_TOKEN_NOT_SUPPORTED))
   )
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
+    (asserts! (get is-active asset) ERR_ASSET_NOT_ACTIVE)
 
     (update-asset-reward ASSET_TYPE_SBTC)
     (update-user-asset-reward caller ASSET_TYPE_SBTC)
@@ -875,7 +895,8 @@
     (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
     (asserts! (<= asset-type u2) ERR_INVALID_PARAMS)
     (asserts! (>= ltv-ratio u1000) ERR_INVALID_PARAMS) ;; min 10% LTV
-    (asserts! (<= ltv-ratio u9000) ERR_INVALID_PARAMS) ;; max 90% LTV
+    (asserts! (<= ltv-ratio u8000) ERR_INVALID_PARAMS) ;; max 80% LTV
+    (asserts! (<= decimals u18) ERR_INVALID_PARAMS) ;; max 18 decimals
 
     (map-set supported-assets asset-type {
       token-principal: token-principal,
@@ -937,7 +958,7 @@
     (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
-    (asserts! (> duration-blocks u0) ERR_INVALID_PARAMS)
+    (asserts! (>= duration-blocks MIN_YIELD_DURATION) ERR_INVALID_PARAMS)
 
     (update-asset-reward ASSET_TYPE_HUSD)
     (try! (contract-call? token transfer amount tx-sender (as-contract tx-sender) none))
@@ -969,7 +990,7 @@
   (begin
     (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
-    (asserts! (> duration-blocks u0) ERR_INVALID_PARAMS)
+    (asserts! (>= duration-blocks MIN_YIELD_DURATION) ERR_INVALID_PARAMS)
 
     (update-asset-reward ASSET_TYPE_STX)
     (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
@@ -1005,7 +1026,7 @@
     (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
     (asserts! (is-eq (contract-of token) expected-token) ERR_TOKEN_NOT_SUPPORTED)
     (asserts! (> amount u0) ERR_INVALID_AMOUNT)
-    (asserts! (> duration-blocks u0) ERR_INVALID_PARAMS)
+    (asserts! (>= duration-blocks MIN_YIELD_DURATION) ERR_INVALID_PARAMS)
 
     (update-asset-reward ASSET_TYPE_SBTC)
     (try! (contract-call? token transfer amount tx-sender (as-contract tx-sender) none))
@@ -1046,6 +1067,31 @@
       (ok true)
     )
   )
+)
+
+;; Emergency pause -- blocks deposits, withdrawals, and yield claims
+(define-public (pause-vault)
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
+    (var-set vault-paused true)
+    (print { event: "vault-paused" })
+    (ok true)
+  )
+)
+
+;; Unpause vault
+(define-public (unpause-vault)
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_NOT_AUTHORIZED)
+    (var-set vault-paused false)
+    (print { event: "vault-unpaused" })
+    (ok true)
+  )
+)
+
+;; Check if vault is paused
+(define-read-only (is-vault-paused)
+  (var-get vault-paused)
 )
 
 ;; Transfer admin role
