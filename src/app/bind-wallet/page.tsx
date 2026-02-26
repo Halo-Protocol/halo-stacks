@@ -34,6 +34,7 @@ export default function BindWalletPage() {
   const [initiating, setInitiating] = useState(false);
   const [confirmFailed, setConfirmFailed] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [walletConflict, setWalletConflict] = useState(false);
   const confirmingRef = useRef(false);
   const checkedRef = useRef(false);
 
@@ -70,8 +71,12 @@ export default function BindWalletPage() {
           setChecking(false);
         }
       })
-      .catch(() => {
-        // Check failed — show the form anyway
+      .catch((err) => {
+        // If wallet is bound to a different identity on-chain, show conflict
+        const message = err instanceof Error ? err.message : "";
+        if (message.toLowerCase().includes("bound to a different") || message.toLowerCase().includes("already linked")) {
+          setWalletConflict(true);
+        }
         setChecking(false);
       });
   }, [connected, address, update, router]);
@@ -139,9 +144,12 @@ export default function BindWalletPage() {
         },
       });
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to initiate binding",
-      );
+      const message = err instanceof Error ? err.message : "Failed to initiate binding";
+      if (message.toLowerCase().includes("already linked")) {
+        setWalletConflict(true);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setInitiating(false);
     }
@@ -199,101 +207,135 @@ export default function BindWalletPage() {
             </Badge>
           </div>
 
-          {/* Warning */}
-          <Alert className="bg-red-500/10 border-red-500/20">
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-            <AlertDescription className="text-sm text-red-200">
-              This binding is <strong>permanent</strong> and cannot be undone.
-              Your wallet address will be permanently linked to your Halo
-              identity.
-            </AlertDescription>
-          </Alert>
+          {/* Wallet conflict error */}
+          {walletConflict ? (
+            <>
+              <Alert className="bg-red-500/10 border-red-500/20">
+                <AlertTriangle className="h-4 w-4 text-red-400" />
+                <AlertDescription className="text-sm text-red-200">
+                  This wallet is already linked to another account.
+                  Each wallet can only be bound to one Halo identity.
+                </AlertDescription>
+              </Alert>
 
-          {/* Confirmation checkbox */}
-          <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10">
-            <Checkbox
-              id="confirm"
-              checked={confirmed}
-              onCheckedChange={(v) => setConfirmed(v === true)}
-              disabled={!!txId}
-            />
-            <label htmlFor="confirm" className="text-sm cursor-pointer text-neutral-300">
-              I understand this binding is permanent and I want to proceed
-            </label>
-          </div>
+              <div className="space-y-2 text-sm text-neutral-400">
+                <p>You can resolve this by:</p>
+                <ul className="list-disc list-inside space-y-1 text-neutral-500">
+                  <li>Connecting a different wallet that hasn&apos;t been used before</li>
+                  <li>Signing in with the account that originally bound this wallet</li>
+                </ul>
+              </div>
 
-          {/* TX Status */}
-          {txId && (
-            <div className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-white/5">
-              {txStatus === "pending" && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm text-neutral-300">
-                    Transaction pending... (~10-15 minutes)
-                  </span>
-                </>
+              <Button
+                variant="outline"
+                className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
+                onClick={() => {
+                  setWalletConflict(false);
+                  router.push("/connect-wallet");
+                }}
+              >
+                Use a Different Wallet
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* Warning */}
+              <Alert className="bg-red-500/10 border-red-500/20">
+                <AlertTriangle className="h-4 w-4 text-red-400" />
+                <AlertDescription className="text-sm text-red-200">
+                  This binding is <strong>permanent</strong> and cannot be undone.
+                  Your wallet address will be permanently linked to your Halo
+                  identity.
+                </AlertDescription>
+              </Alert>
+
+              {/* Confirmation checkbox */}
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10">
+                <Checkbox
+                  id="confirm"
+                  checked={confirmed}
+                  onCheckedChange={(v) => setConfirmed(v === true)}
+                  disabled={!!txId}
+                />
+                <label htmlFor="confirm" className="text-sm cursor-pointer text-neutral-300">
+                  I understand this binding is permanent and I want to proceed
+                </label>
+              </div>
+
+              {/* TX Status */}
+              {txId && (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-white/5">
+                  {txStatus === "pending" && (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                      <span className="text-sm text-neutral-300">
+                        Transaction pending... (~10-15 minutes)
+                      </span>
+                    </>
+                  )}
+                  {txStatus === "success" && (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      <span className="text-sm text-neutral-300">Transaction confirmed!</span>
+                    </>
+                  )}
+                  {txStatus === "failed" && (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-red-400" />
+                      <span className="text-sm text-red-300">
+                        Transaction failed on-chain. This can happen if the wallet
+                        or ID was already bound.
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
-              {txStatus === "success" && (
-                <>
-                  <CheckCircle className="h-4 w-4 text-green-400" />
-                  <span className="text-sm text-neutral-300">Transaction confirmed!</span>
-                </>
-              )}
+
               {txStatus === "failed" && (
-                <>
-                  <AlertTriangle className="h-4 w-4 text-red-400" />
-                  <span className="text-sm text-red-300">
-                    Transaction failed on-chain. This can happen if the wallet
-                    or ID was already bound.
-                  </span>
-                </>
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
+                  onClick={() => {
+                    resetTx();
+                    confirmingRef.current = false;
+                  }}
+                >
+                  Try Again
+                </Button>
               )}
-            </div>
-          )}
 
-          {txStatus === "failed" && (
-            <Button
-              variant="outline"
-              className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
-              onClick={() => {
-                resetTx();
-                confirmingRef.current = false;
-              }}
-            >
-              Try Again
-            </Button>
-          )}
-
-          {confirmFailed && txStatus === "success" && (
-            <Button
-              variant="outline"
-              className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
-              onClick={retryConfirm}
-            >
-              Retry Confirmation
-            </Button>
-          )}
-
-          {txError && (
-            <p className="text-sm text-red-400 text-center">{txError}</p>
-          )}
-
-          {/* Bind button */}
-          {!txId && (
-            <Button
-              className="w-full h-12"
-              onClick={handleBind}
-              disabled={!confirmed || initiating || txLoading}
-            >
-              {initiating || txLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Bind Wallet"
+              {confirmFailed && txStatus === "success" && (
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 text-neutral-300 hover:bg-white/10"
+                  onClick={retryConfirm}
+                >
+                  Retry Confirmation
+                </Button>
               )}
-            </Button>
+
+              {txError && (
+                <p className="text-sm text-red-400 text-center">{txError}</p>
+              )}
+
+              {/* Bind button */}
+              {!txId && (
+                <Button
+                  className="w-full h-12"
+                  onClick={handleBind}
+                  disabled={!confirmed || initiating || txLoading}
+                >
+                  {initiating || txLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Bind Wallet"
+                  )}
+                </Button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
