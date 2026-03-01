@@ -1,0 +1,88 @@
+---
+id: 0
+name: Mainnet deployment
+network: mainnet
+stacks-node: "https://api.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoin.blockstack.com:8332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: halo-identity
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 115746066
+            path: contracts/halo-identity.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-credit
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 116001513
+            path: contracts/halo-credit.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-sip010-trait
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 115665647
+            path: contracts/halo-sip010-trait.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-vault
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 58432853
+            path: contracts/halo-vault.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-circle
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 58511402
+            path: contracts/halo-circle.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-vault-v2
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 58647076
+            path: contracts/halo-vault-v2.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-circle-v2
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 58858919
+            path: contracts/halo-circle-v2.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-mock-sbtc
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 29720790
+            path: contracts/halo-mock-sbtc.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-mock-token
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 29719575
+            path: contracts/halo-mock-token.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-sbtc-staking
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 29786407
+            path: contracts/halo-sbtc-staking.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: halo-vault-v3
+            expected-sender: SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M
+            cost: 29873896
+            path: contracts/halo-vault-v3.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.0"
