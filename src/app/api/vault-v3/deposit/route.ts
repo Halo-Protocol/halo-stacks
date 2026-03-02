@@ -1,0 +1,66 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { requireWallet } from "../../../../lib/middleware";
+import { prisma } from "../../../../lib/db";
+import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
+
+const depositSchema = z.object({
+  assetType: z.number().int().min(0).max(3),
+  amount: z.string().regex(/^\d+$/, "Amount must be a positive integer string"),
+  txId: z.string().min(1).max(100),
+});
+
+export async function POST(request: NextRequest) {
+  const rateLimited = await applyRateLimit(request, "vault-v3-deposit", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
+  const user = await requireWallet();
+  if (user instanceof NextResponse) return user;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+
+  const parsed = depositSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.errors[0].message },
+      { status: 400 },
+    );
+  }
+
+  const { assetType, amount, txId } = parsed.data;
+
+  const txError = await verifyTransaction(txId);
+  if (txError) {
+    return NextResponse.json({ error: txError }, { status: 400 });
+  }
+
+  const deposit = await prisma.vaultDeposit.create({
+    data: {
+      userId: user.id,
+      assetType,
+      amount: BigInt(amount),
+      txId,
+      action: "deposit",
+      vaultVersion: 3,
+    },
+  });
+
+  return NextResponse.json(
+    {
+      id: deposit.id,
+      assetType: deposit.assetType,
+      amount: deposit.amount.toString(),
+      txId: deposit.txId,
+      action: deposit.action,
+    },
+    { status: 201 },
+  );
+}
