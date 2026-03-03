@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   makeContractCall,
   broadcastTransaction,
@@ -10,6 +10,7 @@ import { networkFromName } from "@stacks/network";
 import { requireWallet } from "../../../lib/middleware";
 import { prisma } from "../../../lib/db";
 import { getNextNonce, resetNonce } from "../../../lib/nonce-manager";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../lib/api-helpers";
 
 // 1000 hUSD = 1_000_000_000 micro-units (6 decimals)
 const HUSD_MINT_AMOUNT = 1_000_000_000n;
@@ -18,7 +19,18 @@ const SBTC_MINT_AMOUNT = 1_000_000n;
 // 24 hours in milliseconds
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const rateLimited = await applyRateLimit(request, "faucet", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
+  // Faucet is testnet-only — disable on mainnet to prevent mock token minting
+  if (process.env.STACKS_NETWORK === "mainnet") {
+    return NextResponse.json(
+      { error: "Faucet is disabled on mainnet. Use a bridge or exchange to acquire tokens." },
+      { status: 403 },
+    );
+  }
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
@@ -65,7 +77,7 @@ export async function POST() {
     },
   });
 
-  const network = networkFromName("testnet");
+  const network = networkFromName((process.env.STACKS_NETWORK || "testnet") as "mainnet" | "testnet");
   let hUsdTxId: string | null = null;
   let sbtcTxId: string | null = null;
   let hUsdError: string | null = null;

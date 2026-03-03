@@ -20,7 +20,7 @@ export function useTxStatus(txId: string | null, pollIntervalMs = 15000) {
       try {
         const apiUrl =
           process.env.NEXT_PUBLIC_STACKS_API_URL ||
-          "https://api.testnet.hiro.so";
+          "https://api.hiro.so";
         const res = await fetch(`${apiUrl}/extended/v1/tx/${txId}`);
         if (!res.ok) return;
         const data = await res.json();

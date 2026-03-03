@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "../../../../lib/middleware";
 import { prisma } from "../../../../lib/db";
-import { getTransactionStatus } from "../../../../lib/stacks";
+import { getTransactionStatus, getIdByWallet } from "../../../../lib/stacks";
 import { isValidTxId } from "../../../../lib/sanitize";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
 
 const confirmBindingSchema = z.object({
   txId: z.string().min(1, "Transaction ID is required"),
@@ -11,6 +12,9 @@ const confirmBindingSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await applyRateLimit(request, "confirm-binding", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireAuth();
   if (user instanceof NextResponse) return user;
 
@@ -66,6 +70,19 @@ export async function POST(request: NextRequest) {
       },
       { status: 202 },
     );
+  }
+
+  // Verify the binding actually happened on-chain
+  try {
+    const onChainId = await getIdByWallet(walletAddress);
+    if (onChainId && onChainId.toLowerCase() !== user.uniqueId.toLowerCase()) {
+      return NextResponse.json(
+        { error: "Wallet is bound to a different identity on-chain" },
+        { status: 409 },
+      );
+    }
+  } catch {
+    // On-chain check failed — allow through since tx was confirmed
   }
 
   // Transaction confirmed — update user record

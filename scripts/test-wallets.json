@@ -1,0 +1,95 @@
+{
+  "wallets": [
+    {
+      "name": "test-alice",
+      "mnemonic": "collect cart neutral merge coyote lyrics observe what depth woman swift doll enable argue boring behind fan have sweet creek clap notice daring walk",
+      "privateKey": "bde929f4a90629324f17818fb67644adc7f9329b50f22da76c0a194f0a26f0ee01",
+      "address": "ST3B2EC51VADDNWDQWABDE480RHQZZGNDAA81V1Y8"
+    },
+    {
+      "name": "test-bob",
+      "mnemonic": "pride patrol loud artwork invest route letter infant mean sort camp tribe defy alert great access soap park bronze comic famous pigeon ranch document",
+      "privateKey": "3696649abf90599ac999d4bea3ceb7c6cb56b396a8be0bdb83c0ae32a774ecdf01",
+      "address": "ST2V542CTN9155G72Y5RG90MYN2J8TX46RZ7Z1VPJ"
+    },
+    {
+      "name": "test-carol",
+      "mnemonic": "weapon firm tube cage foam small immense crop vital walk dad people plastic lonely sudden lock area supply peasant choose shoe melody display stamp",
+      "privateKey": "0f798c78f56fe2c53b12c9d61cab06689d4e6f9a5eb0b3e0b7055a1620e7678401",
+      "address": "ST3RPRPT8JTRP1Y552A1VX5JJF61H87J6V85MZF2W"
+    },
+    {
+      "name": "test-dave",
+      "mnemonic": "web use jungle rescue permit next accident collect train junior nut journey recall kick unveil defy tattoo endless wedding motion inside again way nephew",
+      "privateKey": "d130a0454770743d873712f1463874ea3e84592225a4bb2e54801d7ceab21bfb01",
+      "address": "ST3V9T4C56VRGG9YP1AQX1QW950FEWWQ5Y2VFEWYR"
+    },
+    {
+      "name": "test-eve",
+      "mnemonic": "apology outdoor coffee lunar roof above profit ticket coyote scrap throw more doctor rice crane utility border betray aunt wrist occur tomorrow sketch clip",
+      "privateKey": "71672d0030c48a46c6980c2037b1b0efca2f323395eb645673eb824d222979fc01",
+      "address": "ST2AM7FHSSH2XATY2VFM6FFRGRCEY93PWD47MS7SK"
+    },
+    {
+      "name": "test-frank",
+      "mnemonic": "member about evil photo crew rigid drink lava vapor unfair flower unlock flip cheap high enable citizen fly mystery book hurry dice vague insect",
+      "privateKey": "3915d93fb664e8ee4344a0f0ac07bc787725371c043a41c57f3395374abf76e601",
+      "address": "ST3SWQ2NYFNQ70VHFB5VZF9SX5K14G2Z10GYGT289"
+    },
+    {
+      "name": "test-grace",
+      "mnemonic": "congress few screen build arm turn tank limit quiz unhappy worry vacuum much battle holiday father spike ripple brass empower punch never walnut room",
+      "privateKey": "751a14dc35edb46174ce47fad6227a7acd34b34a58d4121ec078b23781832ec501",
+      "address": "ST33MXJAK266XRJ71DZW3Z1BQ2TZD528S2FH98E7V"
+    },
+    {
+      "name": "test-henry",
+      "mnemonic": "ostrich luggage sing zebra exercise typical file tape hill snow glove theme west forest over state champion census logic spring thing favorite car join",
+      "privateKey": "df4cefed6654bfcc98ab2984ed58d1c5c9032fc0f30d7e2a217e4f77ca78ee0501",
+      "address": "ST2B2AVRV9MYQQQDBJE4N9BRDSKX8RXWYM6PKMY1J"
+    },
+    {
+      "name": "test-iris",
+      "mnemonic": "brush idea visit trust around spider island session become sunny town float where ticket acquire spray air turkey crack rookie fire flower visit poem",
+      "privateKey": "df24d9b7549d4a247a1786123bb2cf2f446ea3226fbb67ea38766ad16f2d885f01",
+      "address": "ST12B4R8A2R3EM6Y14VYWQKFCTRZYXQR2AH5W27EY"
+    },
+    {
+      "name": "test-jack",
+      "mnemonic": "hurt inflict state permit cave hub gold tent motor double despair salmon purpose copy build rent enforce fiber radio subject zoo interest bargain snow",
+      "privateKey": "a0adae36bf1c96b95aa281c276ab73742b27ba3ac8320920c2d6c32bbcb320d601",
+      "address": "STWBEWV443BJA270EE7W32KJZRW6HG20R1DCCGTQ"
+    },
+    {
+      "name": "test-kate",
+      "mnemonic": "river unusual leg shine wisdom wet salad borrow tourist rabbit short science raise unlock vote mandate core ginger upgrade report skate code dismiss primary",
+      "privateKey": "9cff4b502b4ed8f0a67cc78033507fc12133073258e9452c60fff9e06ac4248701",
+      "address": "ST17NS307188BWZW7GHWYNJSFN4J604M3WSSEGQHA"
+    },
+    {
+      "name": "test-leo",
+      "mnemonic": "stool trouble cream page eyebrow budget siren ivory athlete frozen interest coyote vault ask female double finish object tongue kite surge other net tell",
+      "privateKey": "4e4bdf9a10f51ecb6ae76d7f130f0f4247ff46e895f18d9877253668ff22abca01",
+      "address": "ST3AB2FFWFCY3Z7WGP224WTK6VX9RYPVG4X3QG8QC"
+    },
+    {
+      "name": "test-mia",
+      "mnemonic": "biology drum basic knock bleak junk arrange era wisdom lava manage cousin dolphin corn gesture boy sort copper thumb pepper diary twice possible main",
+      "privateKey": "c57d7be7f6fb5cbc835727c6e9557db8ed188754725fdb1f4b79d07fed6f67b901",
+      "address": "ST200M3ENKYE74D4BSVN8R0PJFJ7VR5P8CYZNDSX0"
+    },
+    {
+      "name": "test-noah",
+      "mnemonic": "office special peasant reward bulk head snack kitchen candy profit moon cave either trap direct aim north cricket lunch clutch junk dust chief breeze",
+      "privateKey": "0566d54270aa61c96791f55795aa87b726a9c38defe2162737dd2cde157e1a1201",
+      "address": "ST9WB4M7ZR49X9K5Q4C2RC68SXF4W2F4133098FR"
+    },
+    {
+      "name": "test-olivia",
+      "mnemonic": "age next initial pumpkin cry warrior maze lemon tag panic wasp success void famous shy this museum shrimp rough useless inherit suggest border visa",
+      "privateKey": "03d251ca1343e952cab34c835275256a9b9ef30b01d4c5f22a2e6e1763ccb19b01",
+      "address": "ST2E572C1BCVQW1K4EGG62TEJMP15QS33SAHB74KR"
+    }
+  ],
+  "circleId": 1
+}

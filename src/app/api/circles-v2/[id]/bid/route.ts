@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
+import { applyRateLimit, DEFAULT_RATE_LIMIT, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 const bidSchema = z.object({
   round: z.number().int().min(0),
@@ -10,9 +11,12 @@ const bidSchema = z.object({
 });
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = await applyRateLimit(request, "circle-v2-bid-get", DEFAULT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
@@ -48,6 +52,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = await applyRateLimit(request, "circle-v2-bid", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
@@ -84,6 +91,30 @@ export async function POST(
     );
   }
 
+  // Validate round matches current round
+  if (round !== circle.currentRound) {
+    return NextResponse.json(
+      { error: `Invalid round. Current round is ${circle.currentRound}` },
+      { status: 400 },
+    );
+  }
+
+  // Validate bid amount: must be > 0 and <= pool total
+  const poolTotal = circle.contributionAmount * BigInt(circle.totalMembers);
+  const bidAmountBig = BigInt(bidAmount);
+  if (bidAmountBig <= BigInt(0)) {
+    return NextResponse.json(
+      { error: "Bid amount must be greater than zero" },
+      { status: 400 },
+    );
+  }
+  if (bidAmountBig > poolTotal) {
+    return NextResponse.json(
+      { error: "Bid amount cannot exceed the pool total" },
+      { status: 400 },
+    );
+  }
+
   // Verify membership and hasn't won yet
   const member = await prisma.circleMemberV2.findUnique({
     where: { circleId_userId: { circleId: id, userId: user.id } },
@@ -101,28 +132,27 @@ export async function POST(
     );
   }
 
-  // Check for duplicate bid
-  const existing = await prisma.bidV2.findUnique({
-    where: {
-      circleId_userId_round: { circleId: id, userId: user.id, round },
-    },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Already bid for this round" },
-      { status: 409 },
-    );
+  // Atomic create — rely on unique constraint to prevent duplicate bids
+  let bid;
+  try {
+    bid = await prisma.bidV2.create({
+      data: {
+        circleId: id,
+        userId: user.id,
+        round,
+        bidAmount: bidAmountBig,
+        txId,
+      },
+    });
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "Already bid for this round" },
+        { status: 409 },
+      );
+    }
+    throw err;
   }
-
-  const bid = await prisma.bidV2.create({
-    data: {
-      circleId: id,
-      userId: user.id,
-      round,
-      bidAmount: BigInt(bidAmount),
-      txId,
-    },
-  });
 
   return NextResponse.json(
     {

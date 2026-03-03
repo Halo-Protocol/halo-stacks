@@ -3,7 +3,7 @@ let pendingInit: Promise<void> | null = null;
 let mutexQueue: Promise<bigint> = Promise.resolve(0n);
 
 async function fetchAccountNonce(address: string): Promise<bigint> {
-  const apiUrl = process.env.STACKS_API_URL || "https://api.testnet.hiro.so";
+  const apiUrl = process.env.STACKS_API_URL || "https://api.hiro.so";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
