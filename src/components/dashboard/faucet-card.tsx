@@ -24,8 +24,41 @@ interface FaucetResult {
 }
 
 const EXPLORER = "https://explorer.hiro.so/txid";
+const IS_MAINNET = process.env.NEXT_PUBLIC_STACKS_NETWORK === "mainnet";
 
-export function FaucetCard() {
+function MainnetTokenCard() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          Get Tokens
+        </CardTitle>
+        <Droplets className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Acquire USDCx or sBTC to deposit into the vault and join circles.
+        </p>
+        <div className="flex gap-2">
+          <Badge variant="secondary">USDCx</Badge>
+          <Badge variant="secondary">sBTC</Badge>
+        </div>
+        <a
+          href="https://app.alexlab.co/swap"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button className="w-full" variant="outline">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Get USDCx on ALEX
+          </Button>
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TestnetFaucetCard() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FaucetResult | null>(null);
 
@@ -135,4 +168,8 @@ export function FaucetCard() {
       </CardContent>
     </Card>
   );
+}
+
+export function FaucetCard() {
+  return IS_MAINNET ? <MainnetTokenCard /> : <TestnetFaucetCard />;
 }

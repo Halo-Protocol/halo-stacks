@@ -609,10 +609,10 @@ function Footer() {
           </a>
         </div>
         <div className="flex items-center gap-4 text-xs text-zinc-500">
-          <a href="#" className="hover:text-white transition-colors">
+          <a href="/privacy" className="hover:text-white transition-colors">
             Privacy
           </a>
-          <a href="#" className="hover:text-white transition-colors">
+          <a href="/terms" className="hover:text-white transition-colors">
             Terms
           </a>
         </div>

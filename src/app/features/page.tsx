@@ -108,7 +108,7 @@ const features = [
       "Stake sBTC through the halo-sbtc-staking contract",
       "Earn staking rewards proportional to your stake duration",
       "Staking activity contributes positively to your credit score",
-      "Withdraw anytime -- no lock-up period on testnet",
+      "Withdraw anytime -- flexible lock-up periods",
       "Rewards distributed automatically by the smart contract",
       "Bridging real BTC to sBTC supported via the Stacks sBTC bridge",
     ],

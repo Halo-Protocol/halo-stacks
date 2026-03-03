@@ -49,7 +49,7 @@ const steps = [
       "Supports Leather and Xverse wallets",
       "One-time permanent wallet binding for security",
       "Your wallet is how you interact with all smart contracts",
-      "Testnet STX available through the built-in faucet",
+      "Acquire STX, USDCx, or sBTC to get started",
     ],
     icon: (
       <svg
@@ -132,7 +132,7 @@ const faqs = [
   {
     question: "Do I need cryptocurrency to get started?",
     answer:
-      "You need STX tokens to make contributions and pay gas fees. On testnet, you can get free test STX through our built-in faucet (plus mock hUSD and sBTC tokens). For mainnet, you will need to acquire real STX through an exchange.",
+      "You need STX tokens for gas fees, plus a supported token (USDCx, sBTC, or STX) to deposit in the vault and contribute to circles. You can acquire tokens through exchanges like ALEX or Arkadiko.",
   },
   {
     question: "What happens if a member misses a payment?",
