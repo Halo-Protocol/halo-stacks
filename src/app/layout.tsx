@@ -27,6 +27,10 @@ export const metadata: Metadata = {
     description:
       "Join lending circles, make contributions, and build a verifiable credit score on the Stacks blockchain.",
   },
+  other: {
+    "talentapp:project_verification":
+      "4d3916a16d4e2a2b2069994ea84a8671a972777816864a99f0e0d243bee5cb7a363c061fcce731c5b90c8968bb10de8a627d6beec0be208fa364d358543d6bcf",
+  },
 };
 
 export default function RootLayout({
