@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "../../../lib/db";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../lib/api-helpers";
 
 const waitlistSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
 export async function POST(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "waitlist", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   let body: unknown;
   try {
     body = await request.json();

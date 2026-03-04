@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("../../lib/db", () => ({
   prisma: {
@@ -34,6 +34,15 @@ vi.mock("@stacks/network", () => ({
   networkFromName: vi.fn().mockReturnValue("testnet"),
 }));
 
+vi.mock("../../lib/api-helpers", () => ({
+  applyRateLimit: vi.fn().mockReturnValue(null),
+  STRICT_RATE_LIMIT: { maxRequests: 10, windowMs: 60000 },
+}));
+
+function mockRequest(): NextRequest {
+  return new NextRequest("http://localhost:3000/api/faucet", { method: "POST" });
+}
+
 const activeUser = {
   id: "u1",
   email: "test@test.com",
@@ -57,7 +66,7 @@ describe("Faucet endpoint", () => {
     );
 
     const { POST } = await import("../../app/api/faucet/route");
-    const response = await POST();
+    const response = await POST(mockRequest());
     expect(response.status).toBe(401);
   });
 
@@ -67,7 +76,7 @@ describe("Faucet endpoint", () => {
     (requireWallet as ReturnType<typeof vi.fn>).mockResolvedValue(activeUser);
 
     const { POST } = await import("../../app/api/faucet/route");
-    const response = await POST();
+    const response = await POST(mockRequest());
     expect(response.status).toBe(503);
     const body = await response.json();
     expect(body.error).toContain("not configured");
@@ -83,7 +92,7 @@ describe("Faucet endpoint", () => {
     });
 
     const { POST } = await import("../../app/api/faucet/route");
-    const response = await POST();
+    const response = await POST(mockRequest());
     expect(response.status).toBe(429);
     const body = await response.json();
     expect(body.error).toContain("rate limit");
@@ -97,7 +106,7 @@ describe("Faucet endpoint", () => {
     (prisma.faucetRequest.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const { POST } = await import("../../app/api/faucet/route");
-    const response = await POST();
+    const response = await POST(mockRequest());
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.hUsdTxId).toBeDefined();
@@ -113,7 +122,7 @@ describe("Faucet endpoint", () => {
     (prisma.faucetRequest.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const { POST } = await import("../../app/api/faucet/route");
-    await POST();
+    await POST(mockRequest());
 
     expect(prisma.faucetRequest.create).toHaveBeenCalledWith(
       expect.objectContaining({

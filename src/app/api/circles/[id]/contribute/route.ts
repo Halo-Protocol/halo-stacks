@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
 import { isValidTxId } from "../../../../../lib/sanitize";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 const contributeSchema = z.object({
   txId: z.string().min(1, "Transaction ID is required"),
@@ -15,6 +16,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = applyRateLimit(request, "circle-contribute", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 

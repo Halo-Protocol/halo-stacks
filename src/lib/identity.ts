@@ -14,12 +14,10 @@ export function generateUniqueId(
     throw new Error("HALO_ID_SALT environment variable is required");
   }
 
-  const timestamp = Date.now();
   const input = [
     provider,
     socialId,
     email.toLowerCase(),
-    timestamp.toString(),
     salt,
   ].join("|");
 

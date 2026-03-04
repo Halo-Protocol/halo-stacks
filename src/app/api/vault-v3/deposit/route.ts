@@ -4,14 +4,14 @@ import { requireWallet } from "../../../../lib/middleware";
 import { prisma } from "../../../../lib/db";
 import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
 
-const withdrawSchema = z.object({
-  assetType: z.number().int().min(0).max(2),
+const depositSchema = z.object({
+  assetType: z.number().int().min(0).max(3),
   amount: z.string().regex(/^\d+$/, "Amount must be a positive integer string"),
   txId: z.string().min(1).max(100),
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "vault-withdraw", STRICT_RATE_LIMIT);
+  const rateLimited = applyRateLimit(request, "vault-v3-deposit", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const parsed = withdrawSchema.safeParse(body);
+  const parsed = depositSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.errors[0].message },
@@ -42,23 +42,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: txError }, { status: 400 });
   }
 
-  const withdrawal = await prisma.vaultDeposit.create({
+  const deposit = await prisma.vaultDeposit.create({
     data: {
       userId: user.id,
       assetType,
       amount: BigInt(amount),
       txId,
-      action: "withdraw",
+      action: "deposit",
+      vaultVersion: 3,
     },
   });
 
   return NextResponse.json(
     {
-      id: withdrawal.id,
-      assetType: withdrawal.assetType,
-      amount: withdrawal.amount.toString(),
-      txId: withdrawal.txId,
-      action: withdrawal.action,
+      id: deposit.id,
+      assetType: deposit.assetType,
+      amount: deposit.amount.toString(),
+      txId: deposit.txId,
+      action: deposit.action,
     },
     { status: 201 },
   );

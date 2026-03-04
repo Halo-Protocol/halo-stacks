@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../../../../lib/middleware";
 import { prisma } from "../../../../lib/db";
 import { isValidStacksAddress } from "../../../../lib/identity";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
 
 const bindWalletSchema = z.object({
   walletAddress: z.string().refine(isValidStacksAddress, {
@@ -11,6 +12,9 @@ const bindWalletSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "bind-wallet", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireAuth();
   if (user instanceof NextResponse) return user;
 

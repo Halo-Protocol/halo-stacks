@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireWallet } from "../../../lib/middleware";
 import { prisma } from "../../../lib/db";
+import { applyRateLimit, DEFAULT_RATE_LIMIT } from "../../../lib/api-helpers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "vault-get", DEFAULT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 

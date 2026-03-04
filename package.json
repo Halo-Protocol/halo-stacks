@@ -20,6 +20,8 @@
     "postinstall": "prisma generate",
     "deploy:testnet": "node --env-file-if-exists=.env.local --import tsx scripts/deploy-testnet.ts --execute",
     "deploy:testnet:dry-run": "node --env-file-if-exists=.env.local --import tsx scripts/deploy-testnet.ts --dry-run",
+    "deploy:mainnet": "node --env-file-if-exists=.env.local --import tsx scripts/deploy-mainnet.ts --execute",
+    "deploy:mainnet:dry-run": "node --env-file-if-exists=.env.local --import tsx scripts/deploy-mainnet.ts --dry-run",
     "deploy:verify": "node --env-file-if-exists=.env.local --import tsx scripts/verify-deployment.ts",
     "test:e2e": "npx playwright test",
     "playwright:install": "npx playwright install chromium",

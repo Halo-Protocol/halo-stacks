@@ -5,13 +5,13 @@ import { prisma } from "../../../../lib/db";
 import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
 
 const withdrawSchema = z.object({
-  assetType: z.number().int().min(0).max(2),
+  assetType: z.number().int().min(0).max(3),
   amount: z.string().regex(/^\d+$/, "Amount must be a positive integer string"),
   txId: z.string().min(1).max(100),
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "vault-withdraw", STRICT_RATE_LIMIT);
+  const rateLimited = applyRateLimit(request, "vault-v3-withdraw", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       amount: BigInt(amount),
       txId,
       action: "withdraw",
+      vaultVersion: 3,
     },
   });
 

@@ -308,12 +308,14 @@ model VaultDeposit {
   assetType Int      @map("asset_type")
   amount    BigInt
   txId      String?  @map("tx_id")
-  action    String
-  createdAt DateTime @default(now()) @map("created_at")
+  action       String
+  vaultVersion Int      @default(2) @map("vault_version")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([assetType])
+  @@index([vaultVersion])
   @@map("vault_deposits_v2")
 }

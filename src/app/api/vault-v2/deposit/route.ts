@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireWallet } from "../../../../lib/middleware";
 import { prisma } from "../../../../lib/db";
+import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../lib/api-helpers";
 
 const depositSchema = z.object({
   assetType: z.number().int().min(0).max(2),
@@ -10,6 +11,9 @@ const depositSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "vault-deposit", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
@@ -32,6 +36,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { assetType, amount, txId } = parsed.data;
+
+  const txError = await verifyTransaction(txId);
+  if (txError) {
+    return NextResponse.json({ error: txError }, { status: 400 });
+  }
 
   const deposit = await prisma.vaultDeposit.create({
     data: {

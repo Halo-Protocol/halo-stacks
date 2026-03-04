@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 const contributeSchema = z.object({
   round: z.number().int().min(0),
@@ -14,6 +15,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = applyRateLimit(request, "circle-v2-contribute", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
