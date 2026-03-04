@@ -32,8 +32,14 @@ describe("identity", () => {
 
     it("normalizes email to lowercase", () => {
       const id1 = generateUniqueId("google", "12345", "TEST@Example.COM");
-      // Since timestamp is part of hash, we just verify format
-      expect(id1).toMatch(/^0x[0-9a-f]{64}$/);
+      const id2 = generateUniqueId("google", "12345", "test@example.com");
+      expect(id1).toBe(id2);
+    });
+
+    it("is deterministic (same input = same output)", () => {
+      const id1 = generateUniqueId("google", "12345", "test@example.com");
+      const id2 = generateUniqueId("google", "12345", "test@example.com");
+      expect(id1).toBe(id2);
     });
 
     it("throws if HALO_ID_SALT is not set", () => {
