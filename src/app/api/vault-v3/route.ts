@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireWallet } from "../../../lib/middleware";
 import { prisma } from "../../../lib/db";
 import { applyRateLimit, DEFAULT_RATE_LIMIT } from "../../../lib/api-helpers";
-import { getAllAssetYieldInfo } from "../../../lib/yield-rates";
+import { getAllAssetYieldInfo, checkVaultPaused } from "../../../lib/yield-rates";
 import { VAULT_V3_ASSET_TYPES } from "../../../lib/contracts";
 
 const ASSET_NAMES: Record<number, string> = {
@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
-  // Fetch on-chain yield info and DB deposits in parallel
-  const [yieldInfo, deposits, memberships] = await Promise.all([
+  // Fetch on-chain yield info, pause status, and DB deposits in parallel
+  const [yieldInfo, paused, deposits, memberships] = await Promise.all([
     getAllAssetYieldInfo().catch(() => []),
+    checkVaultPaused().catch(() => false),
     prisma.vaultDeposit.findMany({
       where: { userId: user.id, vaultVersion: 3 },
       orderBy: { createdAt: "desc" },
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
   }));
 
   return NextResponse.json({
+    paused,
     assets,
     commitments,
     recentTransactions,

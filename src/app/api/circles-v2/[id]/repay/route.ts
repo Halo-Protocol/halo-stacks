@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
+import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 const repaySchema = z.object({
   repaymentRound: z.number().int().min(0),
@@ -14,6 +15,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = applyRateLimit(request, "circle-v2-repay", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 
@@ -39,6 +43,12 @@ export async function POST(
 
   const { repaymentRound, amountPaid, txId, onTime } = parsed.data;
 
+  // Verify on-chain transaction
+  const txError = await verifyTransaction(txId);
+  if (txError) {
+    return NextResponse.json({ error: txError }, { status: 400 });
+  }
+
   // Verify membership and is a winner
   const member = await prisma.circleMemberV2.findUnique({
     where: { circleId_userId: { circleId: id, userId: user.id } },
@@ -52,6 +62,21 @@ export async function POST(
   if (!member.hasWon) {
     return NextResponse.json(
       { error: "No repayment due - you haven't won yet" },
+      { status: 400 },
+    );
+  }
+
+  // Prevent overpayment
+  const amountDue = (member.wonAmount || BigInt(0)) - (member.totalRepaid || BigInt(0));
+  if (amountDue <= BigInt(0)) {
+    return NextResponse.json(
+      { error: "Repayment already complete" },
+      { status: 400 },
+    );
+  }
+  if (BigInt(amountPaid) > amountDue) {
+    return NextResponse.json(
+      { error: `Amount exceeds remaining balance of ${amountDue.toString()}` },
       { status: 400 },
     );
   }

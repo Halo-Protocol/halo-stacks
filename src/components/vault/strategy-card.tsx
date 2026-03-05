@@ -24,6 +24,7 @@ interface StrategyCardProps {
   ltvPercent: number;
   totalDeposited: string;
   decimals: number;
+  disabled?: boolean;
   onUpdate: () => void;
 }
 
@@ -85,6 +86,7 @@ export function StrategyCard({
   ltvPercent,
   totalDeposited,
   decimals,
+  disabled,
   onUpdate,
 }: StrategyCardProps) {
   const [amount, setAmount] = useState("");
@@ -189,6 +191,10 @@ export function StrategyCard({
           </div>
         </div>
 
+        <p className="text-[10px] text-neutral-600 px-1">
+          Yield is distributed by the protocol admin from real DeFi strategies.
+        </p>
+
         {/* Action area */}
         {!expanded ? (
           <div className="flex gap-2">
@@ -245,20 +251,38 @@ export function StrategyCard({
               <Label className="text-xs text-neutral-400">
                 {mode === "deposit" ? "Deposit" : "Withdraw"} amount ({name})
               </Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                step={1 / Math.pow(10, effectiveDecimals)}
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  min="0"
+                  step={1 / Math.pow(10, effectiveDecimals)}
+                  autoFocus
+                  className="flex-1"
+                />
+                {mode === "withdraw" && hasDeposit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs px-2"
+                    onClick={() => setAmount(depositedFormatted)}
+                  >
+                    Max
+                  </Button>
+                )}
+              </div>
+              {microAmount > 0 && priceUsd > 0 && (
+                <p className="text-[10px] text-neutral-500">
+                  ≈ ${((microAmount / Math.pow(10, effectiveDecimals)) * priceUsd).toFixed(2)} USD
+                </p>
+              )}
             </div>
 
             <Button
               onClick={handleAction}
-              disabled={microAmount <= 0 || submitting || txLoading}
+              disabled={microAmount <= 0 || submitting || txLoading || disabled}
               className="w-full"
               size="sm"
             >

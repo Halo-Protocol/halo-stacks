@@ -8,8 +8,9 @@ import { StrategyCard } from "../../components/vault/strategy-card";
 import { PortfolioSummary } from "../../components/vault/portfolio-summary";
 import { CapacityBar } from "../../components/vault/capacity-bar";
 import { TransactionHistory } from "../../components/vault/transaction-history";
+import { ErrorBoundary } from "../../components/error-boundary";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Shield } from "lucide-react";
+import { Shield, AlertTriangle } from "lucide-react";
 
 interface VaultAsset {
   assetType: number;
@@ -41,6 +42,7 @@ interface VaultTransaction {
 }
 
 interface VaultData {
+  paused?: boolean;
   assets: VaultAsset[];
   commitments: VaultCommitment[];
   recentTransactions: VaultTransaction[];
@@ -77,12 +79,25 @@ export default function VaultPage() {
     );
   }
 
+  const paused = data?.paused ?? false;
   const assets = data?.assets || [];
   const commitments = data?.commitments || [];
   const transactions = data?.recentTransactions || [];
 
   return (
+    <ErrorBoundary>
     <div className="container py-8 space-y-8">
+      {/* Pause banner */}
+      {paused && (
+        <div className="flex items-center gap-3 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 text-yellow-200">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Vault Temporarily Paused</p>
+            <p className="text-sm text-yellow-300/70">Deposits and withdrawals are currently disabled for maintenance.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -117,6 +132,7 @@ export default function VaultPage() {
               ltvPercent={asset.ltvPercent}
               totalDeposited={asset.totalDeposited}
               decimals={asset.decimals}
+              disabled={paused}
               onUpdate={refetch}
             />
           ))}
@@ -149,5 +165,6 @@ export default function VaultPage() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

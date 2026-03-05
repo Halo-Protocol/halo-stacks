@@ -35,10 +35,7 @@ export async function POST(
     );
   }
 
-  const circle = await prisma.circleV2.findUnique({
-    where: { id },
-    include: { _count: { select: { members: true } } },
-  });
+  const circle = await prisma.circleV2.findUnique({ where: { id } });
 
   if (!circle) {
     return NextResponse.json(
@@ -54,53 +51,63 @@ export async function POST(
     );
   }
 
-  if (circle._count.members >= circle.totalMembers) {
-    return NextResponse.json(
-      { error: "Circle is full" },
-      { status: 400 },
-    );
-  }
+  // Atomic join: create member + check capacity + activate in one transaction
+  let result;
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      // Count current members inside transaction for atomicity
+      const currentCount = await tx.circleMemberV2.count({
+        where: { circleId: id },
+      });
 
-  // Check if already a member
-  const existing = await prisma.circleMemberV2.findUnique({
-    where: { circleId_userId: { circleId: id, userId: user.id } },
-  });
+      if (currentCount >= circle.totalMembers) {
+        throw new Error("CIRCLE_FULL");
+      }
 
-  if (existing) {
-    return NextResponse.json(
-      { error: "Already a member of this circle" },
-      { status: 409 },
-    );
-  }
+      const member = await tx.circleMemberV2.create({
+        data: {
+          circleId: id,
+          userId: user.id,
+          status: "confirmed",
+          joinTxId: parsed.data.txId,
+          joinedAt: new Date(),
+        },
+      });
 
-  const member = await prisma.circleMemberV2.create({
-    data: {
-      circleId: id,
-      userId: user.id,
-      status: "confirmed",
-      joinTxId: parsed.data.txId,
-      joinedAt: new Date(),
-    },
-  });
+      const newCount = currentCount + 1;
 
-  // Check if circle is now full -> activate
-  const memberCount = circle._count.members + 1;
-  if (memberCount >= circle.totalMembers) {
-    await prisma.circleV2.update({
-      where: { id },
-      data: {
-        status: "active",
-        startedAt: new Date(),
-      },
+      // Activate circle if now full
+      if (newCount >= circle.totalMembers) {
+        await tx.circleV2.update({
+          where: { id },
+          data: {
+            status: "active",
+            startedAt: new Date(),
+          },
+        });
+      }
+
+      return { member, memberCount: newCount, activated: newCount >= circle.totalMembers };
     });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "CIRCLE_FULL") {
+      return NextResponse.json({ error: "Circle is full" }, { status: 400 });
+    }
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "Already a member of this circle" },
+        { status: 409 },
+      );
+    }
+    throw err;
   }
 
   return NextResponse.json(
     {
-      memberId: member.id,
+      memberId: result.member.id,
       circleId: id,
-      memberCount,
-      activated: memberCount >= circle.totalMembers,
+      memberCount: result.memberCount,
+      activated: result.activated,
     },
     { status: 201 },
   );

@@ -4,7 +4,7 @@ import { requireWallet } from "../../../lib/middleware";
 import { prisma } from "../../../lib/db";
 import { randomBytes } from "crypto";
 import { stripHtml } from "../../../lib/sanitize";
-import { applyRateLimit, DEFAULT_RATE_LIMIT } from "../../../lib/api-helpers";
+import { applyRateLimit, DEFAULT_RATE_LIMIT, STRICT_RATE_LIMIT } from "../../../lib/api-helpers";
 
 const createCircleV2Schema = z.object({
   name: z.string().min(3).max(30),
@@ -68,6 +68,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "circle-v2-create", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
-import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
+import { applyRateLimit, verifyTransaction, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 const settleSchema = z.object({
   round: z.number().int().min(0),
@@ -58,58 +58,117 @@ export async function POST(
     );
   }
 
-  // Check for duplicate settlement
-  const existing = await prisma.roundResultV2.findUnique({
-    where: { circleId_round: { circleId: id, round: data.round } },
-  });
-  if (existing) {
+  // Only the circle creator can settle rounds
+  if (circle.creatorId !== user.id) {
     return NextResponse.json(
-      { error: "Round already settled" },
-      { status: 409 },
+      { error: "Only the circle creator can settle rounds" },
+      { status: 403 },
     );
   }
 
-  // Create round result and update member in a transaction
-  const result = await prisma.$transaction(async (tx) => {
-    const roundResult = await tx.roundResultV2.create({
-      data: {
-        circleId: id,
-        round: data.round,
-        winnerId: data.winnerId,
-        winningBid: BigInt(data.winningBid),
-        poolTotal: BigInt(data.poolTotal),
-        protocolFee: BigInt(data.protocolFee),
-        surplus: BigInt(data.surplus),
-        dividendPerMember: BigInt(data.dividendPerMember),
-        settleTxId: data.settleTxId,
-      },
-    });
+  // Validate round matches current round
+  if (data.round !== circle.currentRound) {
+    return NextResponse.json(
+      { error: `Invalid round. Current round is ${circle.currentRound}` },
+      { status: 400 },
+    );
+  }
 
-    // Mark winner
-    await tx.circleMemberV2.update({
-      where: { circleId_userId: { circleId: id, userId: data.winnerId } },
-      data: {
-        hasWon: true,
-        wonRound: data.round,
-        wonAmount: BigInt(data.winningBid),
-      },
-    });
+  // Validate pool total matches expected value
+  const expectedPool = circle.contributionAmount * BigInt(circle.totalMembers);
+  if (BigInt(data.poolTotal) !== expectedPool) {
+    return NextResponse.json(
+      { error: "Pool total does not match expected value" },
+      { status: 400 },
+    );
+  }
 
-    // Advance round
-    const nextRound = data.round + 1;
-    const isComplete = nextRound >= circle.totalMembers;
+  // Validate winning bid doesn't exceed pool total
+  if (BigInt(data.winningBid) > expectedPool || BigInt(data.winningBid) <= BigInt(0)) {
+    return NextResponse.json(
+      { error: "Invalid winning bid amount" },
+      { status: 400 },
+    );
+  }
 
-    await tx.circleV2.update({
-      where: { id },
-      data: {
-        currentRound: nextRound,
-        status: isComplete ? "completed" : "active",
-        completedAt: isComplete ? new Date() : undefined,
-      },
-    });
-
-    return roundResult;
+  // Verify winner is a member who hasn't already won
+  const winner = await prisma.circleMemberV2.findUnique({
+    where: { circleId_userId: { circleId: id, userId: data.winnerId } },
   });
+  if (!winner) {
+    return NextResponse.json(
+      { error: "Winner is not a member of this circle" },
+      { status: 400 },
+    );
+  }
+  if (winner.hasWon) {
+    return NextResponse.json(
+      { error: "Winner has already won a previous round" },
+      { status: 400 },
+    );
+  }
+
+  // Verify on-chain transaction if provided
+  if (data.settleTxId) {
+    const txError = await verifyTransaction(data.settleTxId);
+    if (txError) {
+      return NextResponse.json({ error: txError }, { status: 400 });
+    }
+  }
+
+  // Create round result and update member in a transaction
+  // Use try/catch to handle race condition on duplicate settlement
+  let result;
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const roundResult = await tx.roundResultV2.create({
+        data: {
+          circleId: id,
+          round: data.round,
+          winnerId: data.winnerId,
+          winningBid: BigInt(data.winningBid),
+          poolTotal: BigInt(data.poolTotal),
+          protocolFee: BigInt(data.protocolFee),
+          surplus: BigInt(data.surplus),
+          dividendPerMember: BigInt(data.dividendPerMember),
+          settleTxId: data.settleTxId,
+        },
+      });
+
+      // Mark winner
+      await tx.circleMemberV2.update({
+        where: { circleId_userId: { circleId: id, userId: data.winnerId } },
+        data: {
+          hasWon: true,
+          wonRound: data.round,
+          wonAmount: BigInt(data.winningBid),
+        },
+      });
+
+      // Advance round
+      const nextRound = data.round + 1;
+      const isComplete = nextRound >= circle.totalMembers;
+
+      await tx.circleV2.update({
+        where: { id },
+        data: {
+          currentRound: nextRound,
+          status: isComplete ? "completed" : "active",
+          completedAt: isComplete ? new Date() : undefined,
+        },
+      });
+
+      return roundResult;
+    });
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "Round already settled" },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
 
   return NextResponse.json(
     {

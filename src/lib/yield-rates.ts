@@ -125,3 +125,16 @@ export async function getAllAssetYieldInfo(): Promise<AssetYieldInfo[]> {
 export function clearYieldCache() {
   cache = null;
 }
+
+/**
+ * Check if the vault is currently paused on-chain.
+ */
+export async function checkVaultPaused(): Promise<boolean> {
+  try {
+    const result = await callReadOnly("is-paused", []);
+    const json = cvToJSON(result);
+    return extractValue(json) === true;
+  } catch {
+    return false;
+  }
+}
