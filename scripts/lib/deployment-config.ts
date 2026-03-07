@@ -11,6 +11,15 @@ export const CONTRACTS = [
   "halo-circle",
 ] as const;
 
+export const MAINNET_CONTRACTS = [
+  "halo-sip010-trait",
+  "halo-identity",
+  "halo-mock-token",
+  "halo-credit",
+  "halo-vault",
+  "halo-circle",
+] as const;
+
 export type ContractName = (typeof CONTRACTS)[number];
 
 export interface AuthorizationCall {
@@ -61,6 +70,39 @@ export function getAuthorizationCalls(deployer: string): AuthorizationCall[] {
       functionName: "set-staking-token",
       description: "Set staking token to halo-mock-sbtc",
       buildArgs: () => [contractPrincipalCV(deployer, "halo-mock-sbtc")],
+    },
+  ];
+}
+
+export function getMainnetAuthorizationCalls(deployer: string): AuthorizationCall[] {
+  return [
+    {
+      contractName: "halo-credit",
+      functionName: "authorize-contract",
+      description: "Authorize halo-circle in halo-credit",
+      buildArgs: () => [contractPrincipalCV(deployer, "halo-circle")],
+    },
+    {
+      contractName: "halo-vault",
+      functionName: "authorize-contract",
+      description: "Authorize halo-circle in halo-vault",
+      buildArgs: () => [contractPrincipalCV(deployer, "halo-circle")],
+    },
+    {
+      contractName: "halo-vault",
+      functionName: "set-vault-token",
+      description: "Set vault token to halo-mock-token",
+      buildArgs: () => [contractPrincipalCV(deployer, "halo-mock-token")],
+    },
+    {
+      contractName: "halo-vault",
+      functionName: "set-token-price",
+      description: "Set STX price to $0.50 (6 decimals)",
+      buildArgs: () => [
+        contractPrincipalCV(deployer, deployer.split(".")[0] || deployer),
+        uintCV(500000),
+        uintCV(6),
+      ],
     },
   ];
 }

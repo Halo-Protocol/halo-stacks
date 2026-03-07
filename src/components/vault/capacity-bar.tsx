@@ -6,12 +6,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { TOKEN_DECIMALS } from "../../lib/contracts";
 
 interface AssetInfo {
   assetType: number;
   name: string;
   deposited: string;
   ltvPercent: number;
+  priceUsd?: number;
+  decimals?: number;
 }
 
 interface Commitment {
@@ -26,33 +29,25 @@ interface CapacityBarProps {
   commitments: Commitment[];
 }
 
-// Approximate USD prices for capacity estimation (client-side only)
-const ASSET_PRICES_USD: Record<number, number> = {
-  0: 1,        // hUSD = $1
-  1: 0.50,     // STX = $0.50
-  2: 65000,    // sBTC = $65,000
-};
-
-const ASSET_DECIMALS: Record<number, number> = {
-  0: 6,
-  1: 6,
-  2: 8,
+// Fallback prices when on-chain prices aren't available
+const FALLBACK_PRICES: Record<number, number> = {
+  0: 1,        // USDCx = $1
+  1: 65000,    // sBTC = $65,000
+  2: 0.50,     // STX = $0.50
+  3: 1,        // hUSD = $1
 };
 
 export function CapacityBar({ assets, commitments }: CapacityBarProps) {
-  // Calculate total capacity in USD
   let totalCapacityUsd = 0;
   for (const a of assets) {
-    const decimals = ASSET_DECIMALS[a.assetType] || 6;
+    const decimals = TOKEN_DECIMALS[a.assetType] || a.decimals || 6;
     const depositedNum = Number(BigInt(a.deposited || "0")) / Math.pow(10, decimals);
-    const priceUsd = ASSET_PRICES_USD[a.assetType] || 0;
+    const priceUsd = a.priceUsd || FALLBACK_PRICES[a.assetType] || 0;
     totalCapacityUsd += depositedNum * priceUsd * (a.ltvPercent / 100);
   }
 
-  // Calculate committed amount in USD
   let committedUsd = 0;
   for (const c of commitments) {
-    // contributionAmount is in micro-units, assume it's the per-round commitment
     committedUsd += Number(BigInt(c.contributionAmount || "0")) / 1_000_000;
   }
 
@@ -62,14 +57,14 @@ export function CapacityBar({ assets, commitments }: CapacityBarProps) {
     : 0;
 
   return (
-    <Card className="bg-[#111827] border-white/10">
+    <Card className="bg-[#0d1117] border-white/10">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Staking Capacity</CardTitle>
+        <CardTitle className="text-base">Circle Capacity</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-neutral-400">Used</span>
+            <span className="text-neutral-400">Committed</span>
             <span className="text-white font-mono">
               ${committedUsd.toFixed(2)} / ${totalCapacityUsd.toFixed(2)}
             </span>
@@ -89,7 +84,7 @@ export function CapacityBar({ assets, commitments }: CapacityBarProps) {
           </div>
           <div className="flex justify-between text-xs text-neutral-500">
             <span>Available: ${availableUsd.toFixed(2)}</span>
-            <span>{usedPercent.toFixed(0)}% used</span>
+            <span>{usedPercent.toFixed(0)}% committed</span>
           </div>
         </div>
 

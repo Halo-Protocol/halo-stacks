@@ -430,10 +430,9 @@ export default function WhitepaperPage() {
                 hUSD (Halo USD)
               </h3>
               <p className="text-sm text-neutral-400 leading-relaxed">
-                A stable-value token used for circle contributions. On testnet,
-                hUSD is minted via the faucet (1,000 hUSD per claim, 24-hour
-                cooldown). On mainnet, hUSD will be backed by a basket of
-                stablecoins or minted through a collateralization mechanism.
+                A stable-value token used for circle contributions. hUSD is
+                backed by protocol reserves and can be deposited into the
+                vault to earn yield and unlock circle participation capacity.
               </p>
             </div>
             <div className="glass-card p-6">
@@ -467,9 +466,8 @@ export default function WhitepaperPage() {
                   </p>
                   <p className="text-sm text-neutral-400 mt-1">
                     Smart contract development, backend API, frontend
-                    application, security hardening, deployment scripts, testnet
-                    launch preparation, and production hardening. 412 tests
-                    passing across all layers.
+                    application, security hardening, deployment scripts, and
+                    production hardening. 400+ tests passing across all layers.
                   </p>
                 </div>
               </div>
@@ -479,11 +477,11 @@ export default function WhitepaperPage() {
                 </div>
                 <div>
                   <p className="text-white font-medium">
-                    Phase 8: Testnet Launch
+                    Phase 8: Mainnet Launch
                   </p>
                   <p className="text-sm text-neutral-400 mt-1">
-                    User testing with 30-50 participants on Stacks testnet.
-                    Faucet distribution of testnet hUSD and sBTC. Real-world
+                    Live deployment on Stacks mainnet with USDCx and sBTC
+                    support. Vault-v3 with real yield strategies. Multi-asset
                     circle formation and credit score accumulation.
                   </p>
                 </div>

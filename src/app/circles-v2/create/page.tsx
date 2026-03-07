@@ -35,7 +35,13 @@ import {
   Gavel,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatSTX } from "../../../lib/contracts";
+import { formatSTX, CONTRACTS } from "../../../lib/contracts";
+
+const TOKEN_OPTIONS = [
+  { value: "stx", label: "STX", decimals: 6, type: 0, contract: null },
+  { value: "usdcx", label: "USDCx", decimals: 6, type: 1, contract: `${CONTRACTS.usdcx.address}.${CONTRACTS.usdcx.name}` },
+  { value: "sbtc", label: "sBTC", decimals: 8, type: 1, contract: `${CONTRACTS.realSbtc.address}.${CONTRACTS.realSbtc.name}` },
+] as const;
 
 interface CreateV2Result {
   id: string;
@@ -49,6 +55,7 @@ interface CreateV2Result {
     bidWindowBlocks: number;
     gracePeriod: number;
     tokenType: number;
+    tokenContract?: string;
   };
 }
 
@@ -67,6 +74,7 @@ export default function CreateCircleV2Page() {
   const [roundDuration, setRoundDuration] = useState("30");
   const [bidWindow, setBidWindow] = useState("2");
   const [gracePeriod, setGracePeriod] = useState("1");
+  const [tokenKey, setTokenKey] = useState("stx");
 
   // Result
   const [result, setResult] = useState<CreateV2Result | null>(null);
@@ -77,7 +85,8 @@ export default function CreateCircleV2Page() {
     }
   }, [sessionStatus, router]);
 
-  const amountMicroSTX = Math.floor(parseFloat(amount || "0") * 1_000_000);
+  const selectedToken = TOKEN_OPTIONS.find((t) => t.value === tokenKey) || TOKEN_OPTIONS[0];
+  const amountMicroSTX = Math.floor(parseFloat(amount || "0") * Math.pow(10, selectedToken.decimals));
 
   const canProceedStep1 =
     name.length >= 3 && name.length <= 30 && amountMicroSTX > 0;
@@ -94,6 +103,8 @@ export default function CreateCircleV2Page() {
           roundDurationDays: parseInt(roundDuration),
           bidWindowDays: parseInt(bidWindow),
           gracePeriodDays: parseInt(gracePeriod),
+          tokenType: selectedToken.type,
+          ...(selectedToken.contract && { tokenContract: selectedToken.contract }),
         }),
       });
 
@@ -190,7 +201,25 @@ export default function CreateCircleV2Page() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Contribution Amount (STX per round)</Label>
+              <Label>Token</Label>
+              <Select value={tokenKey} onValueChange={setTokenKey}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOKEN_OPTIONS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose the token for circle contributions and payouts.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Contribution Amount ({selectedToken.label} per round)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -198,11 +227,11 @@ export default function CreateCircleV2Page() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 min="0"
-                step="0.000001"
+                step={1 / Math.pow(10, selectedToken.decimals)}
               />
               {amountMicroSTX > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  = {amountMicroSTX.toLocaleString()} microSTX per round
+                  = {amountMicroSTX.toLocaleString()} micro-units per round
                 </p>
               )}
             </div>
@@ -289,7 +318,7 @@ export default function CreateCircleV2Page() {
             {/* How bidding works explainer */}
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 text-xs text-neutral-400 space-y-1">
               <p className="text-blue-400 font-medium text-sm">How Bidding Works</p>
-              <p>Each round, all {totalMembers} members contribute {amount || "X"} STX each (pool = {parseInt(totalMembers) * parseFloat(amount || "0")} STX).</p>
+              <p>Each round, all {totalMembers} members contribute {amount || "X"} {selectedToken.label} each (pool = {parseInt(totalMembers) * parseFloat(amount || "0")} {selectedToken.label}).</p>
               <p>Eligible members (who haven't won yet) bid the lowest amount they'd accept from the pool.</p>
               <p>Lowest bidder wins and takes their bid amount. A small protocol fee is deducted.</p>
               <p>The surplus is split equally among non-winners as dividends.</p>
@@ -328,7 +357,12 @@ export default function CreateCircleV2Page() {
               <Separator />
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Contribution</span>
-                <span className="font-medium">{formatSTX(amountMicroSTX)} STX / round</span>
+                <span className="font-medium">{amount} {selectedToken.label} / round</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Token</span>
+                <span className="font-medium">{selectedToken.label}</span>
               </div>
               <Separator />
               <div className="flex justify-between">
@@ -354,7 +388,7 @@ export default function CreateCircleV2Page() {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Pool per Round</span>
                 <span className="font-medium">
-                  {formatSTX(amountMicroSTX * parseInt(totalMembers))} STX
+                  {(parseFloat(amount || "0") * parseInt(totalMembers)).toLocaleString()} {selectedToken.label}
                 </span>
               </div>
               <Separator />

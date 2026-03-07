@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireWallet } from "../../../../../lib/middleware";
 import { prisma } from "../../../../../lib/db";
+import { applyRateLimit, STRICT_RATE_LIMIT } from "../../../../../lib/api-helpers";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const rateLimited = await applyRateLimit(request, "circle-join", STRICT_RATE_LIMIT);
+  if (rateLimited) return rateLimited;
+
   const user = await requireWallet();
   if (user instanceof NextResponse) return user;
 

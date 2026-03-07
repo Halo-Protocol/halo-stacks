@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import {
   fetchCallReadOnlyFunction,
   cvToJSON,
@@ -9,7 +10,7 @@ import {
 import { networkFromName } from "@stacks/network";
 
 function getNetwork() {
-  const networkType = process.env.STACKS_NETWORK || "testnet";
+  const networkType = process.env.STACKS_NETWORK || "mainnet";
   return networkFromName(networkType as "mainnet" | "testnet");
 }
 
@@ -128,7 +129,7 @@ export async function getCircleInfo(
         : null,
     };
   } catch (err) {
-    console.error("[stacks] getCircleInfo failed for circle", circleId, err);
+    logger.error({ circleId, err }, "getCircleInfo failed");
     return null;
   }
 }
@@ -170,7 +171,7 @@ export async function getTransactionStatus(
   txId: string,
 ): Promise<"success" | "pending" | "failed"> {
   const apiUrl =
-    process.env.STACKS_API_URL || "https://api.testnet.hiro.so";
+    process.env.STACKS_API_URL || "https://api.hiro.so";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
@@ -188,7 +189,7 @@ export async function getTransactionStatus(
       return "pending";
     return "failed";
   } catch (err) {
-    console.error("[stacks] getTransactionStatus fetch failed:", err);
+    logger.error({ err }, "getTransactionStatus fetch failed");
     return "pending";
   } finally {
     clearTimeout(timeout);
