@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://haloprotocol.xyz";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://gethalo.fun";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

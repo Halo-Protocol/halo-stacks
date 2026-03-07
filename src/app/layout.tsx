@@ -11,7 +11,7 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
 });
 
-const SITE_URL = process.env.NEXTAUTH_URL || "https://haloprotocol.xyz";
+const SITE_URL = process.env.NEXTAUTH_URL || "https://gethalo.fun";
 const SITE_NAME = "Halo Protocol";
 const DESCRIPTION =
   "Decentralized lending circles on the Stacks blockchain. Join community-based savings groups, earn yield on multi-asset vaults, and build a verifiable on-chain credit score.";

@@ -5,7 +5,7 @@
 import { logger } from "./logger";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.NOTIFICATION_FROM || "Halo Protocol <noreply@haloprotocol.xyz>";
+const FROM_EMAIL = process.env.NOTIFICATION_FROM || "Halo Protocol <noreply@gethalo.fun>";
 
 interface EmailParams {
   to: string;
@@ -68,7 +68,7 @@ export async function notifyContributionDue(
     html: `
       <h2>Contribution Reminder</h2>
       <p>Your contribution of <strong>${amount}</strong> for <strong>${circleName}</strong> (Round ${round}) is due by <strong>${dueDate}</strong>.</p>
-      <p><a href="${process.env.NEXTAUTH_URL || "https://haloprotocol.xyz"}/circles">View Circle</a></p>
+      <p><a href="${process.env.NEXTAUTH_URL || "https://gethalo.fun"}/circles">View Circle</a></p>
     `,
   });
 }
@@ -84,7 +84,7 @@ export async function notifyBidWindowOpen(
     html: `
       <h2>Bidding is Open</h2>
       <p>The bid window for <strong>${circleName}</strong> (Round ${round}) is now open. Place your bid to receive the pool funds.</p>
-      <p><a href="${process.env.NEXTAUTH_URL || "https://haloprotocol.xyz"}/circles">Place Bid</a></p>
+      <p><a href="${process.env.NEXTAUTH_URL || "https://gethalo.fun"}/circles">Place Bid</a></p>
     `,
   });
 }
@@ -101,7 +101,7 @@ export async function notifyRoundSettled(
     html: `
       <h2>Round ${round} Settled</h2>
       <p><strong>${circleName}</strong> Round ${round} has been settled. The winner is <strong>${winnerName}</strong>.</p>
-      <p><a href="${process.env.NEXTAUTH_URL || "https://haloprotocol.xyz"}/circles">View Details</a></p>
+      <p><a href="${process.env.NEXTAUTH_URL || "https://gethalo.fun"}/circles">View Details</a></p>
     `,
   });
 }
@@ -118,7 +118,7 @@ export async function notifyRepaymentDue(
     html: `
       <h2>Repayment Reminder</h2>
       <p>Your repayment of <strong>${amount}</strong> for <strong>${circleName}</strong> is due by <strong>${dueDate}</strong>.</p>
-      <p><a href="${process.env.NEXTAUTH_URL || "https://haloprotocol.xyz"}/circles">Make Payment</a></p>
+      <p><a href="${process.env.NEXTAUTH_URL || "https://gethalo.fun"}/circles">Make Payment</a></p>
     `,
   });
 }

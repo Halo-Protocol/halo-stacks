@@ -9,4 +9,4 @@ Disallow: /api/
 Allow: /api/health
 Allow: /api/circles-v2/explore
 
-Sitemap: https://haloprotocol.xyz/sitemap.xml
+Sitemap: https://gethalo.fun/sitemap.xml

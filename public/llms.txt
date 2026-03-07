@@ -33,11 +33,11 @@ Halo Protocol is a decentralized finance (DeFi) protocol on the Stacks blockchai
 
 ## Links
 
-- Website: https://haloprotocol.xyz
-- Status: https://haloprotocol.xyz/status
-- Explore Circles: https://haloprotocol.xyz/explore
-- Documentation: https://haloprotocol.xyz/docs
-- Whitepaper: https://haloprotocol.xyz/whitepaper
+- Website: https://gethalo.fun
+- Status: https://gethalo.fun/status
+- Explore Circles: https://gethalo.fun/explore
+- Documentation: https://gethalo.fun/docs
+- Whitepaper: https://gethalo.fun/whitepaper
 
 ## API
 
