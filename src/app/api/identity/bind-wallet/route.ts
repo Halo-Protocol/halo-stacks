@@ -12,7 +12,7 @@ const bindWalletSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "bind-wallet", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "bind-wallet", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireAuth();

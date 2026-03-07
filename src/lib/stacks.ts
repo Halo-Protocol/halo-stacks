@@ -1,3 +1,4 @@
+import { logger } from "./logger";
 import {
   fetchCallReadOnlyFunction,
   cvToJSON,
@@ -128,7 +129,7 @@ export async function getCircleInfo(
         : null,
     };
   } catch (err) {
-    console.error("[stacks] getCircleInfo failed for circle", circleId, err);
+    logger.error({ circleId, err }, "getCircleInfo failed");
     return null;
   }
 }
@@ -188,7 +189,7 @@ export async function getTransactionStatus(
       return "pending";
     return "failed";
   } catch (err) {
-    console.error("[stacks] getTransactionStatus fetch failed:", err);
+    logger.error({ err }, "getTransactionStatus fetch failed");
     return "pending";
   } finally {
     clearTimeout(timeout);

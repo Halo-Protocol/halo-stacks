@@ -7,7 +7,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const rateLimited = applyRateLimit(request, "circle-join", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "circle-join", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();

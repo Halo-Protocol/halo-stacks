@@ -28,7 +28,7 @@ function generateInviteCode(): string {
 }
 
 export async function GET(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "circles-v2-list", DEFAULT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "circles-v2-list", DEFAULT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "circle-v2-create", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "circle-v2-create", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();

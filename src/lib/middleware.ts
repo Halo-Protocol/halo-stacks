@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { authOptions } from "./auth";
 import { prisma } from "./db";
 
@@ -62,4 +63,23 @@ export async function requireWallet(): Promise<
   }
 
   return result as AuthenticatedUser & { walletAddress: string };
+}
+
+/**
+ * Require admin API key (Bearer token). Returns null if authorized, or a 401 response.
+ */
+export function requireAdmin(request: NextRequest): NextResponse | null {
+  const authHeader = request.headers.get("authorization");
+  const adminKey = process.env.ADMIN_API_KEY;
+
+  if (!adminKey || !authHeader) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const expected = `Bearer ${adminKey}`;
+  if (authHeader.length !== expected.length || !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
 }

@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  checkRateLimit,
+  checkRateLimitAsync,
   DEFAULT_RATE_LIMIT,
   STRICT_RATE_LIMIT,
 } from "./rate-limit";
 
-type RateLimitConfig = Parameters<typeof checkRateLimit>[1];
+type RateLimitConfig = { windowMs: number; maxRequests: number };
 
 /**
  * Extract client IP from request headers for rate limiting.
@@ -20,15 +20,16 @@ function getClientIp(request: NextRequest): string {
 
 /**
  * Check rate limit for an API request. Returns a 429 response if exceeded, or null if allowed.
+ * Uses Redis (Upstash) when available, falls back to in-memory.
  */
-export function applyRateLimit(
+export async function applyRateLimit(
   request: NextRequest,
   prefix: string,
   config: RateLimitConfig = DEFAULT_RATE_LIMIT,
-): NextResponse | null {
+): Promise<NextResponse | null> {
   const ip = getClientIp(request);
   const key = `${prefix}:${ip}`;
-  const result = checkRateLimit(key, config);
+  const result = await checkRateLimitAsync(key, config);
 
   if (!result.allowed) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
@@ -36,7 +37,7 @@ export function applyRateLimit(
       { error: "Too many requests. Please try again later." },
       {
         status: 429,
-        headers: { "Retry-After": String(retryAfter) },
+        headers: { "Retry-After": String(Math.max(1, retryAfter)) },
       },
     );
   }

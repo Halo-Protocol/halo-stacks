@@ -11,7 +11,7 @@ const depositSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "vault-v3-deposit", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "vault-v3-deposit", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();

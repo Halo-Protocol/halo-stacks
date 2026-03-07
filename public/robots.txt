@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /admin
+Disallow: /api/
+
+# Allow public API endpoints for discovery
+Allow: /api/health
+Allow: /api/circles-v2/explore
+
+Sitemap: https://haloprotocol.xyz/sitemap.xml

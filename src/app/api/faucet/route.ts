@@ -20,7 +20,7 @@ const SBTC_MINT_AMOUNT = 1_000_000n;
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "faucet", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "faucet", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   // Faucet is testnet-only — disable on mainnet to prevent mock token minting

@@ -8,7 +8,7 @@ const waitlistSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "waitlist", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "waitlist", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   let body: unknown;

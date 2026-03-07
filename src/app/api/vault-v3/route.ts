@@ -13,7 +13,7 @@ const ASSET_NAMES: Record<number, string> = {
 };
 
 export async function GET(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "vault-v3-get", DEFAULT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "vault-v3-get", DEFAULT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireWallet();

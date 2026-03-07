@@ -12,7 +12,7 @@ const confirmBindingSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const rateLimited = applyRateLimit(request, "confirm-binding", STRICT_RATE_LIMIT);
+  const rateLimited = await applyRateLimit(request, "confirm-binding", STRICT_RATE_LIMIT);
   if (rateLimited) return rateLimited;
 
   const user = await requireAuth();

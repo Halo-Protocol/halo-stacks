@@ -34,6 +34,7 @@ model User {
   contributionsV2  ContributionV2[]
   repaymentsV2     RepaymentV2[]
   vaultDeposits    VaultDeposit[]
+  pendingTxs       PendingTransaction[]
 
   @@unique([socialProvider, socialId])
   @@map("users")
@@ -318,4 +319,46 @@ model VaultDeposit {
   @@index([assetType])
   @@index([vaultVersion])
   @@map("vault_deposits_v2")
+}
+
+// ============================================
+// Event & Transaction Tracking
+// ============================================
+
+model BlockchainEvent {
+  id            String   @id @default(uuid())
+  blockHeight   Int      @map("block_height")
+  txId          String   @map("tx_id")
+  eventIndex    Int      @map("event_index")
+  contractName  String   @map("contract_name")
+  eventType     String   @map("event_type")
+  data          Json
+  processedAt   DateTime @default(now()) @map("processed_at")
+
+  @@unique([txId, eventIndex])
+  @@index([blockHeight])
+  @@index([contractName])
+  @@index([eventType])
+  @@map("blockchain_events")
+}
+
+model PendingTransaction {
+  id          String    @id @default(uuid())
+  txId        String    @unique @map("tx_id")
+  userId      String?   @map("user_id")
+  txType      String    @map("tx_type")
+  status      String    @default("pending")
+  contractName String?  @map("contract_name")
+  functionName String?  @map("function_name")
+  submittedAt DateTime  @default(now()) @map("submitted_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  failedAt    DateTime? @map("failed_at")
+  error       String?
+  metadata    Json?
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("pending_transactions")
 }

@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { getCircleInfo } from "./stacks";
+import { logger } from "./logger";
 
 const STATUS_MAP: Record<number, string> = {
   0: "forming",
@@ -62,7 +63,7 @@ export async function syncAllActiveCircles(): Promise<{
       if (ok) synced++;
       else failed++;
     } catch (err) {
-      console.error("[sync] failed to sync circle", circle.id, err);
+      logger.error({ circleId: circle.id, err }, "failed to sync circle");
       failed++;
     }
   }

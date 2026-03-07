@@ -1,0 +1,45 @@
+# Halo Protocol
+
+> Decentralized lending circles (ROSCA) on the Stacks blockchain. Build credit through community.
+
+## What is Halo Protocol?
+
+Halo Protocol is a decentralized finance (DeFi) protocol on the Stacks blockchain that enables community-based lending circles (also known as ROSCA — Rotating Savings and Credit Associations). Members contribute to a shared pool each round, and one member receives the pot through a competitive bidding mechanism. All contributions and credit scores are recorded on-chain for transparency and verifiability.
+
+## Key Features
+
+- **Lending Circles**: Create or join lending circles with customizable contribution amounts, round durations, and member counts
+- **Multi-Asset Vault**: Deposit USDCx, sBTC, STX, or hUSD into the vault to earn yield and use as collateral for circle participation
+- **On-Chain Credit Scoring**: Build a verifiable credit score through on-time payments, tracked immutably on the Stacks blockchain
+- **Competitive Bidding**: Members bid for the pool each round — lowest bid wins, creating a natural interest rate market
+- **Collateral-Backed**: Vault deposits serve as collateral, with configurable LTV ratios per asset type
+
+## How It Works
+
+1. **Sign Up**: Authenticate with Google or GitHub, then bind a Stacks wallet (Leather or Xverse)
+2. **Deposit**: Add assets (USDCx, sBTC, STX, hUSD) to the multi-asset vault
+3. **Join a Circle**: Find or create a lending circle with your desired parameters
+4. **Contribute**: Make regular contributions each round to the shared pool
+5. **Bid & Win**: Place bids to receive the pool — lowest bid wins
+6. **Build Credit**: On-time payments increase your on-chain credit score
+
+## Technical Details
+
+- **Blockchain**: Stacks (Bitcoin L2)
+- **Smart Contracts**: 11 Clarity contracts deployed on mainnet
+- **Token Support**: USDCx, sBTC, STX, hUSD
+- **Yield Strategy**: Synthetix-style reward accumulator (reward-per-token-stored pattern)
+- **Credit Scores**: Range from 300-850, updated per payment event
+
+## Links
+
+- Website: https://haloprotocol.xyz
+- Status: https://haloprotocol.xyz/status
+- Explore Circles: https://haloprotocol.xyz/explore
+- Documentation: https://haloprotocol.xyz/docs
+- Whitepaper: https://haloprotocol.xyz/whitepaper
+
+## API
+
+- Health Check: GET /api/health
+- Explore Circles: GET /api/circles-v2/explore
