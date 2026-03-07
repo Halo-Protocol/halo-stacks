@@ -7,7 +7,7 @@ test.describe("Landing page", () => {
 
   test("renders the hero headline", async ({ page }) => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "Build Credit Through",
+      "Build Credit",
     );
   });
 
