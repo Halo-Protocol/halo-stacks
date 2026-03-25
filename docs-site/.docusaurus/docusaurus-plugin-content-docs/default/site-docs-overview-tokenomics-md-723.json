@@ -1,0 +1,29 @@
+{
+  "id": "overview/tokenomics",
+  "title": "Tokenomics & Fees",
+  "description": "Protocol fees, yield distribution, and token mechanics.",
+  "source": "@site/docs/overview/tokenomics.md",
+  "sourceDirName": "overview",
+  "slug": "/overview/tokenomics",
+  "permalink": "/overview/tokenomics",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/overview/tokenomics.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3,
+    "title": "Tokenomics & Fees",
+    "description": "Protocol fees, yield distribution, and token mechanics."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "How It Works",
+    "permalink": "/overview/how-it-works"
+  },
+  "next": {
+    "title": "Protocol Overview",
+    "permalink": "/protocol/overview"
+  }
+}

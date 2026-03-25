@@ -1,0 +1,29 @@
+{
+  "id": "protocol/credit-scoring",
+  "title": "Credit Scoring",
+  "description": "On-chain credit scores built from verifiable lending behavior.",
+  "source": "@site/docs/protocol/credit-scoring.md",
+  "sourceDirName": "protocol",
+  "slug": "/protocol/credit-scoring",
+  "permalink": "/protocol/credit-scoring",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/protocol/credit-scoring.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3,
+    "title": "Credit Scoring",
+    "description": "On-chain credit scores built from verifiable lending behavior."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Lending Circles",
+    "permalink": "/protocol/circles"
+  },
+  "next": {
+    "title": "Collateral Vault",
+    "permalink": "/protocol/vault"
+  }
+}

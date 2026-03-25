@@ -1,0 +1,29 @@
+{
+  "id": "guides/faucet",
+  "title": "Testnet Faucet",
+  "description": "Get free hUSD and sBTC tokens on testnet.",
+  "source": "@site/docs/guides/faucet.md",
+  "sourceDirName": "guides",
+  "slug": "/guides/faucet",
+  "permalink": "/guides/faucet",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/guides/faucet.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4,
+    "title": "Testnet Faucet",
+    "description": "Get free hUSD and sBTC tokens on testnet."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Creating a Circle",
+    "permalink": "/guides/creating-a-circle"
+  },
+  "next": {
+    "title": "Smart Contract Reference",
+    "permalink": "/developers/contracts"
+  }
+}

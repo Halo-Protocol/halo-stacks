@@ -11,6 +11,8 @@ const API = "https://api.hiro.so";
 const DEPLOYER = "SPWAYZFA113ZTRNDSD3A51WYY90S5MCTWQKXNB2M";
 const FEE = 800;
 const CHAIN_LIMIT = 24; // stay under 25 TooMuchChaining limit
+const MAX_GAS = 460_000; // 0.46 STX max per cycle
+const MAX_TXS = Math.floor(MAX_GAS / FEE); // 575 txs max
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -80,6 +82,8 @@ async function main() {
     }
   }
 
+  // Cap queue to max gas budget
+  if (queue.length > MAX_TXS) queue.length = MAX_TXS;
   const gasCost = queue.length * FEE;
   console.log(`\nQueued: ${queue.length} txs (${(gasCost / 1e6).toFixed(4)} STX gas)`);
   console.log("Broadcasting...\n");

@@ -1,0 +1,29 @@
+{
+  "id": "protocol/identity",
+  "title": "Identity System",
+  "description": "One-time wallet binding that links social identity to Stacks addresses.",
+  "source": "@site/docs/protocol/identity.md",
+  "sourceDirName": "protocol",
+  "slug": "/protocol/identity",
+  "permalink": "/protocol/identity",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/protocol/identity.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "sidebar_position": 6,
+    "title": "Identity System",
+    "description": "One-time wallet binding that links social identity to Stacks addresses."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "sBTC Staking",
+    "permalink": "/protocol/sbtc-staking"
+  },
+  "next": {
+    "title": "Getting Started",
+    "permalink": "/guides/getting-started"
+  }
+}

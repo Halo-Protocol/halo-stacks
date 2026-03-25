@@ -1,0 +1,29 @@
+{
+  "id": "protocol/vault",
+  "title": "Collateral Vault",
+  "description": "Multi-asset collateral vault with LTV enforcement, yield distribution, and slashing.",
+  "source": "@site/docs/protocol/vault.md",
+  "sourceDirName": "protocol",
+  "slug": "/protocol/vault",
+  "permalink": "/protocol/vault",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/protocol/vault.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4,
+    "title": "Collateral Vault",
+    "description": "Multi-asset collateral vault with LTV enforcement, yield distribution, and slashing."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Credit Scoring",
+    "permalink": "/protocol/credit-scoring"
+  },
+  "next": {
+    "title": "sBTC Staking",
+    "permalink": "/protocol/sbtc-staking"
+  }
+}

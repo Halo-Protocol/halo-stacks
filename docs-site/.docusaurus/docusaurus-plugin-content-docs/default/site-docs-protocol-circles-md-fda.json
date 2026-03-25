@@ -1,0 +1,29 @@
+{
+  "id": "protocol/circles",
+  "title": "Lending Circles",
+  "description": "How Halo's decentralized lending circles work — Classic ROSCA and Bidding modes.",
+  "source": "@site/docs/protocol/circles.md",
+  "sourceDirName": "protocol",
+  "slug": "/protocol/circles",
+  "permalink": "/protocol/circles",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/protocol/circles.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "title": "Lending Circles",
+    "description": "How Halo's decentralized lending circles work — Classic ROSCA and Bidding modes."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Protocol Overview",
+    "permalink": "/protocol/overview"
+  },
+  "next": {
+    "title": "Credit Scoring",
+    "permalink": "/protocol/credit-scoring"
+  }
+}

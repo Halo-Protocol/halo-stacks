@@ -1,0 +1,29 @@
+{
+  "id": "protocol/sbtc-staking",
+  "title": "sBTC Staking",
+  "description": "Stake sBTC to earn yield and boost your credit score.",
+  "source": "@site/docs/protocol/sbtc-staking.md",
+  "sourceDirName": "protocol",
+  "slug": "/protocol/sbtc-staking",
+  "permalink": "/protocol/sbtc-staking",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/protocol/sbtc-staking.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5,
+    "title": "sBTC Staking",
+    "description": "Stake sBTC to earn yield and boost your credit score."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Collateral Vault",
+    "permalink": "/protocol/vault"
+  },
+  "next": {
+    "title": "Identity System",
+    "permalink": "/protocol/identity"
+  }
+}

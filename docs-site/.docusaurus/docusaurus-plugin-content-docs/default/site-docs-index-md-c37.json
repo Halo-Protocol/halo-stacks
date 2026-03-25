@@ -1,0 +1,26 @@
+{
+  "id": "index",
+  "title": "Halo Protocol Documentation",
+  "description": "Decentralized lending circles on Stacks — the modern ROSCA, powered by Bitcoin.",
+  "source": "@site/docs/index.md",
+  "sourceDirName": ".",
+  "slug": "/",
+  "permalink": "/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/index.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Halo Protocol Documentation",
+    "description": "Decentralized lending circles on Stacks — the modern ROSCA, powered by Bitcoin.",
+    "slug": "/",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "next": {
+    "title": "What is Halo?",
+    "permalink": "/overview/what-is-halo"
+  }
+}

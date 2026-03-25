@@ -1,0 +1,29 @@
+{
+  "id": "developers/integration",
+  "title": "Integration Guide",
+  "description": "How to integrate with Halo Protocol from your own application.",
+  "source": "@site/docs/developers/integration.md",
+  "sourceDirName": "developers",
+  "slug": "/developers/integration",
+  "permalink": "/developers/integration",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/developers/integration.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3,
+    "title": "Integration Guide",
+    "description": "How to integrate with Halo Protocol from your own application."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "API Reference",
+    "permalink": "/developers/api"
+  },
+  "next": {
+    "title": "Admin & Governance",
+    "permalink": "/governance/admin"
+  }
+}

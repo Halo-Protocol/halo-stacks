@@ -1,0 +1,29 @@
+{
+  "id": "resources/faq",
+  "title": "FAQ",
+  "description": "Frequently asked questions about Halo Protocol.",
+  "source": "@site/docs/resources/faq.md",
+  "sourceDirName": "resources",
+  "slug": "/resources/faq",
+  "permalink": "/resources/faq",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/resources/faq.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "title": "FAQ",
+    "description": "Frequently asked questions about Halo Protocol."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Security",
+    "permalink": "/resources/security"
+  },
+  "next": {
+    "title": "Glossary",
+    "permalink": "/resources/glossary"
+  }
+}

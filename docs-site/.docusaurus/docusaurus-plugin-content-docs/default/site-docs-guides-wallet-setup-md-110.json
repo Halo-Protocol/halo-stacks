@@ -1,0 +1,29 @@
+{
+  "id": "guides/wallet-setup",
+  "title": "Wallet Setup",
+  "description": "How to set up a Stacks wallet for use with Halo Protocol.",
+  "source": "@site/docs/guides/wallet-setup.md",
+  "sourceDirName": "guides",
+  "slug": "/guides/wallet-setup",
+  "permalink": "/guides/wallet-setup",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/guides/wallet-setup.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "title": "Wallet Setup",
+    "description": "How to set up a Stacks wallet for use with Halo Protocol."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Getting Started",
+    "permalink": "/guides/getting-started"
+  },
+  "next": {
+    "title": "Creating a Circle",
+    "permalink": "/guides/creating-a-circle"
+  }
+}

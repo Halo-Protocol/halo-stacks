@@ -1,0 +1,29 @@
+{
+  "id": "guides/creating-a-circle",
+  "title": "Creating a Circle",
+  "description": "Step-by-step guide to creating and managing a lending circle.",
+  "source": "@site/docs/guides/creating-a-circle.md",
+  "sourceDirName": "guides",
+  "slug": "/guides/creating-a-circle",
+  "permalink": "/guides/creating-a-circle",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/halo-protocol/halo-stacks/tree/main/docs-site/docs/guides/creating-a-circle.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3,
+    "title": "Creating a Circle",
+    "description": "Step-by-step guide to creating and managing a lending circle."
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Wallet Setup",
+    "permalink": "/guides/wallet-setup"
+  },
+  "next": {
+    "title": "Testnet Faucet",
+    "permalink": "/guides/faucet"
+  }
+}
